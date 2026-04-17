@@ -100,19 +100,65 @@ Every `git push` to main re-deploys automatically.
   Vite 8). CacheFirst for OSM tiles, NetworkFirst with shell fallback for
   navigations.
 
-## Capacitor migration (v2, for native background GPS)
+## Native iOS / Android build (for background GPS)
 
-Main constraint in v1: iOS Safari pauses JS when the screen locks, so
-true background tracking needs the native app. When you're ready:
+Capacitor is already wired in. The same React bundle that ships to
+`mototrack.pages.dev` also runs inside a native shell — the platform
+adapter switches automatically via `Capacitor.isNativePlatform()`.
+Everything in `src/features/platform/capacitor.ts` is implemented
+(geolocation, share, filesystem) and the required privacy keys are set
+in `ios/App/App/Info.plist` and `android/app/src/main/AndroidManifest.xml`.
 
+What's NOT in place (because it's local dev environment + Apple/Google
+bureaucracy, not code):
+
+### iOS — requirements
+
+1. **Install Xcode.app** from the Mac App Store. ~12 GB download.
+2. **Install CocoaPods**: `brew install cocoapods` (requires Homebrew)
+   or `sudo gem install cocoapods`.
+3. **Apple Developer account** — free tier works for installing on your
+   own phone (re-sign every 7 days), $99/year for TestFlight or the
+   App Store.
+4. **Cable your iPhone in**, trust this computer on first connect, and
+   enable Developer Mode on the phone (Settings → Privacy & Security →
+   Developer Mode).
+
+Then:
 ```bash
-npm i @capacitor/core @capacitor/ios @capacitor/android \
-      @capacitor/geolocation @capacitor/share @capacitor/filesystem
-npx cap init mototrack com.kunjdodiya.mototrack
-npx cap add ios && npx cap add android
+npm run cap:ios          # builds web, syncs, opens Xcode
 ```
+In Xcode: pick your device from the top-left picker, pick your Apple ID
+team under Signing & Capabilities, click Run.
 
-Then implement the three methods in
-[`src/features/platform/capacitor.ts`](./src/features/platform/capacitor.ts)
-and flip `src/features/platform/index.ts` to export `capacitorPlatform`.
-No other code changes.
+### Android — requirements
+
+1. **Install Android Studio**: https://developer.android.com/studio
+   (~1 GB plus SDK downloads).
+2. **Enable USB debugging** on your phone (Settings → About phone →
+   tap Build number 7 times → Developer options → USB debugging).
+3. **Cable your phone in** and approve the RSA fingerprint prompt.
+
+Then:
+```bash
+npm run cap:android      # builds web, syncs, opens Android Studio
+```
+In Android Studio: wait for Gradle sync, pick your device in the top
+toolbar, click Run.
+
+### Everyday workflow after native is set up
+
+Edit web code → `npm run cap:sync` → rebuild in Xcode/Android Studio.
+Or just `npm run cap:ios` / `npm run cap:android` to do everything in
+one command.
+
+## Deploy the web version
+
+After a code change:
+```bash
+npm run deploy
+```
+This runs `vite build` then `wrangler pages deploy dist` to
+https://mototrack.pages.dev. Wrangler is already authenticated on
+this Mac; it'll keep working as long as the OAuth token is valid
+(~90 days). Re-auth with `npx wrangler login` if needed.

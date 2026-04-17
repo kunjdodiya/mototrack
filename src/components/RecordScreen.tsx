@@ -1,7 +1,10 @@
 import { useNavigate } from 'react-router-dom'
+import { Capacitor } from '@capacitor/core'
 import { useRecorder } from '../features/recorder/useRecorder'
 import LiveStats from './LiveStats'
 import RideMap from './RideMap'
+
+const isNative = Capacitor.isNativePlatform()
 
 export default function RecordScreen() {
   const navigate = useNavigate()
@@ -33,7 +36,9 @@ export default function RecordScreen() {
               Ready to ride?
             </h1>
             <p className="mt-2 text-neutral-400">
-              Tap Start, keep the screen on, and ride. We'll track your route.
+              {isNative
+                ? "Tap Start and ride. We'll track your route in the background."
+                : "Tap Start, keep the screen on, and ride. We'll track your route."}
             </p>
           </div>
           <button
@@ -49,10 +54,12 @@ export default function RecordScreen() {
         </div>
       ) : (
         <>
-          <div className="rounded-xl bg-amber-950/60 border border-amber-900 px-3 py-2 text-xs text-amber-200">
-            Keep screen on and app open. Auto-lock is disabled. True background
-            tracking needs the native app (coming soon).
-          </div>
+          {!isNative && (
+            <div className="rounded-xl bg-amber-950/60 border border-amber-900 px-3 py-2 text-xs text-amber-200">
+              Keep screen on and app open. Auto-lock is disabled. For true
+              background tracking, install the native app.
+            </div>
+          )}
 
           <LiveStats />
 
