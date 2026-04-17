@@ -1,12 +1,12 @@
 import { create } from 'zustand'
 import { v4 as uuidv4 } from 'uuid'
 import type { Ride, TrackPoint } from '../../types/ride'
-import { watchPosition, type GeoError } from './geolocation'
-import { requestWakeLock } from './wakeLock'
+import { platform, type GeoError } from '../platform'
 import { shouldAcceptPoint } from './smoothing'
 import { haversine } from '../stats/haversine'
 import { computeStats } from '../stats/computeStats'
 import { saveRide } from '../storage/rides'
+import { pushRide } from '../storage/sync'
 import { getDeviceId } from '../storage/deviceId'
 
 export type RecorderStatus = 'idle' | 'recording' | 'paused' | 'saving'
@@ -66,9 +66,9 @@ export const useRecorder = create<RecorderState>((set, get) => ({
       error: null,
     })
 
-    releaseWakeLock = await requestWakeLock()
+    releaseWakeLock = await platform.requestWakeLock()
 
-    stopWatch = watchPosition(
+    stopWatch = platform.watchPosition(
       (point) => {
         const state = get()
         if (state.status !== 'recording') return // ignore while paused
@@ -128,6 +128,10 @@ export const useRecorder = create<RecorderState>((set, get) => ({
     }
 
     await saveRide(ride)
+
+    // Fire-and-forget cloud sync; failure is OK (marked unsynced, retried
+    // next boot by syncUnsyncedRides).
+    void pushRide(ride)
 
     // Leave the recorder in 'idle' with the final counts visible briefly;
     // consumers navigate away to /ride/:id.

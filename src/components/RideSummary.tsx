@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import type { Ride } from '../types/ride'
 import { getRide, deleteRide } from '../features/storage/rides'
 import { renderSharePng } from '../features/share/exportPng'
-import { sharePng } from '../features/share/share'
+import { platform } from '../features/platform'
 import RideMap from './RideMap'
 import ShareCard from './ShareCard'
 
@@ -55,7 +55,7 @@ export default function RideSummary() {
         ride,
         cardNode: posterRef.current,
       })
-      await sharePng({
+      await platform.sharePng({
         blob,
         filename: `mototrack-${ride.id.slice(0, 8)}.png`,
         title: 'MotoTrack ride',
