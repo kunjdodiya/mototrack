@@ -19,4 +19,11 @@ export const platform: Platform = Capacitor.isNativePlatform()
   ? capacitorPlatform
   : webPlatform
 
-export type { Platform, GeoError, ShareArgs, ShareResult } from './types'
+export type {
+  Platform,
+  GeoError,
+  GeoErrorKind,
+  PermissionState,
+  ShareArgs,
+  ShareResult,
+} from './types'

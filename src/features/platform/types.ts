@@ -1,6 +1,19 @@
 import type { TrackPoint } from '../../types/ride'
 
-export type GeoError = { code: number; message: string }
+export type GeoErrorKind =
+  | 'permission-denied'
+  | 'position-unavailable'
+  | 'timeout'
+  | 'unsupported'
+  | 'unknown'
+
+export type GeoError = {
+  kind: GeoErrorKind
+  code: number
+  message: string
+}
+
+export type PermissionState = 'granted' | 'prompt' | 'denied' | 'unsupported'
 
 export type ShareArgs = {
   blob: Blob
@@ -13,15 +26,16 @@ export type ShareResult = 'shared' | 'downloaded'
 
 /**
  * The platform contract. Everything that differs between mobile web and the
- * future Capacitor native build goes through this interface. When v2 wraps
- * the app as a native iOS/Android shell, swap `./web` for `./capacitor` and
- * nothing else changes in the codebase.
+ * Capacitor native shell goes through this interface. Feature code must never
+ * touch navigator.geolocation or @capacitor/* directly.
  */
 export interface Platform {
   watchPosition(
     onPoint: (p: TrackPoint) => void,
     onError: (e: GeoError) => void,
   ): () => void
+
+  checkLocationPermission(): Promise<PermissionState>
 
   requestWakeLock(): Promise<() => void>
 

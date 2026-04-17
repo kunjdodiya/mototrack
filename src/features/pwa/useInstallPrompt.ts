@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { isIOSSafari } from '../../lib/isIOSSafari'
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>
@@ -35,17 +36,17 @@ export function useInstallPrompt() {
  * iOS Safari never fires beforeinstallprompt. Detect iOS-Safari-not-standalone
  * and show a one-time dismissable hint: "Tap Share → Add to Home Screen".
  */
-export function useIosInstallHint() {
-  const [show, setShow] = useState(false)
+function shouldShowIosHint() {
+  if (typeof window === 'undefined') return false
+  if (!isIOSSafari()) return false
+  // @ts-expect-error -- navigator.standalone is non-standard but iOS-only
+  const standalone = window.navigator.standalone === true
+  if (standalone) return false
+  return localStorage.getItem('mototrack.iosHint.dismissed') !== '1'
+}
 
-  useEffect(() => {
-    const ua = navigator.userAgent
-    const isIos = /iPad|iPhone|iPod/.test(ua) && !('MSStream' in window)
-    // @ts-expect-error -- navigator.standalone is non-standard but iOS-only
-    const standalone = window.navigator.standalone === true
-    const dismissed = localStorage.getItem('mototrack.iosHint.dismissed') === '1'
-    setShow(isIos && !standalone && !dismissed)
-  }, [])
+export function useIosInstallHint() {
+  const [show, setShow] = useState<boolean>(shouldShowIosHint)
 
   const dismiss = () => {
     localStorage.setItem('mototrack.iosHint.dismissed', '1')

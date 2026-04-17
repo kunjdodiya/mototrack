@@ -1,7 +1,13 @@
 import { Geolocation } from '@capacitor/geolocation'
 import { Share } from '@capacitor/share'
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'
-import type { Platform, GeoError, ShareArgs, ShareResult } from './types'
+import type {
+  Platform,
+  GeoError,
+  PermissionState,
+  ShareArgs,
+  ShareResult,
+} from './types'
 import type { TrackPoint } from '../../types/ride'
 
 /**
@@ -40,7 +46,11 @@ export const capacitorPlatform: Platform = {
           permissions: ['location'],
         })
         if (perm.location === 'denied') {
-          onError({ code: 1, message: 'Location permission denied' })
+          onError({
+            kind: 'permission-denied',
+            code: 1,
+            message: 'Location permission denied',
+          })
           return
         }
 
@@ -48,7 +58,11 @@ export const capacitorPlatform: Platform = {
           { enableHighAccuracy: true, timeout: 15_000 },
           (pos, err) => {
             if (err) {
-              onError({ code: 0, message: err.message ?? 'geolocation error' })
+              onError({
+                kind: 'unknown',
+                code: 0,
+                message: err.message ?? 'geolocation error',
+              })
               return
             }
             if (!pos) return
@@ -70,6 +84,7 @@ export const capacitorPlatform: Platform = {
         watchId = id
       } catch (err) {
         onError({
+          kind: 'unknown',
           code: -1,
           message: err instanceof Error ? err.message : String(err),
         })
@@ -84,6 +99,17 @@ export const capacitorPlatform: Platform = {
         void Geolocation.clearWatch({ id: watchId })
         watchId = null
       }
+    }
+  },
+
+  async checkLocationPermission(): Promise<PermissionState> {
+    try {
+      const result = await Geolocation.checkPermissions()
+      if (result.location === 'granted') return 'granted'
+      if (result.location === 'denied') return 'denied'
+      return 'prompt'
+    } catch {
+      return 'prompt'
     }
   },
 

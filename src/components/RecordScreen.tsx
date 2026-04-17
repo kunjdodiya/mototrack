@@ -3,6 +3,7 @@ import { Capacitor } from '@capacitor/core'
 import { useRecorder } from '../features/recorder/useRecorder'
 import LiveStats from './LiveStats'
 import RideMap from './RideMap'
+import LocationBlockedCard from './LocationBlockedCard'
 
 const isNative = Capacitor.isNativePlatform()
 
@@ -16,6 +17,7 @@ export default function RecordScreen() {
   const pause = useRecorder((s) => s.pause)
   const resume = useRecorder((s) => s.resume)
   const stop = useRecorder((s) => s.stop)
+  const reset = useRecorder((s) => s.reset)
 
   const idle = status === 'idle'
   const recording = status === 'recording'
@@ -25,6 +27,19 @@ export default function RecordScreen() {
   const handleStop = async () => {
     const ride = await stop()
     if (ride) navigate(`/ride/${ride.id}`)
+  }
+
+  const handleRetry = () => {
+    reset()
+    void start()
+  }
+
+  if (error?.kind === 'permission-denied') {
+    return (
+      <div className="mx-auto flex h-full max-w-xl flex-col items-center justify-center p-6">
+        <LocationBlockedCard onRetry={handleRetry} />
+      </div>
+    )
   }
 
   return (

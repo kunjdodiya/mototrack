@@ -3,11 +3,18 @@ import App from './App'
 import RecordScreen from './components/RecordScreen'
 import HistoryList from './components/HistoryList'
 import RideSummary from './components/RideSummary'
+import AuthCallback from './components/AuthCallback'
+import AuthGate from './features/auth/AuthGate'
 
 export const router = createBrowserRouter([
+  { path: '/auth/callback', element: <AuthCallback /> },
   {
     path: '/',
-    element: <App />,
+    element: (
+      <AuthGate>
+        <App />
+      </AuthGate>
+    ),
     children: [
       { index: true, element: <RecordScreen /> },
       { path: 'history', element: <HistoryList /> },
