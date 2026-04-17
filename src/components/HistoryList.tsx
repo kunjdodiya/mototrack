@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { db } from '../features/storage/db'
+import { seedDemoRide } from '../features/storage/demoRide'
 import {
   formatDateTime,
   formatDistance,
@@ -8,15 +9,32 @@ import {
 } from '../features/stats/format'
 
 export default function HistoryList() {
+  const navigate = useNavigate()
   const rides = useLiveQuery(
     () => db.rides.orderBy('startedAt').reverse().toArray(),
     [],
     [],
   )
 
+  const handleSeed = async () => {
+    const ride = await seedDemoRide()
+    navigate(`/ride/${ride.id}`)
+  }
+
   return (
     <div className="mx-auto max-w-xl p-6">
-      <h1 className="text-2xl font-semibold tracking-tight">History</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight">History</h1>
+        {import.meta.env.DEV && (
+          <button
+            type="button"
+            onClick={() => void handleSeed()}
+            className="rounded-md border border-neutral-800 px-3 py-1 text-xs text-neutral-300 hover:border-neutral-700"
+          >
+            Seed demo ride
+          </button>
+        )}
+      </div>
       {rides.length === 0 ? (
         <p className="mt-4 text-neutral-400">
           Your rides will show up here. Nothing recorded yet.

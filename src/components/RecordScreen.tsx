@@ -1,12 +1,14 @@
 import { useNavigate } from 'react-router-dom'
 import { useRecorder } from '../features/recorder/useRecorder'
 import LiveStats from './LiveStats'
+import RideMap from './RideMap'
 
 export default function RecordScreen() {
   const navigate = useNavigate()
   const status = useRecorder((s) => s.status)
   const error = useRecorder((s) => s.error)
-  const pointCount = useRecorder((s) => s.points.length)
+  const points = useRecorder((s) => s.points)
+  const pointCount = points.length
   const start = useRecorder((s) => s.start)
   const pause = useRecorder((s) => s.pause)
   const resume = useRecorder((s) => s.resume)
@@ -53,6 +55,10 @@ export default function RecordScreen() {
           </div>
 
           <LiveStats />
+
+          <div className="h-64">
+            <RideMap points={points} follow className="h-full overflow-hidden rounded-xl border border-neutral-800 bg-neutral-950" />
+          </div>
 
           <div className="text-center text-xs text-neutral-500">
             {pointCount} GPS fixes · {paused ? 'paused' : 'recording'}
