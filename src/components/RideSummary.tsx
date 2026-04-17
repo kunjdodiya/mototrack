@@ -1,13 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { Ride } from '../types/ride'
 import { getRide, deleteRide } from '../features/storage/rides'
+import { renderSharePng } from '../features/share/exportPng'
+import { sharePng } from '../features/share/share'
 import RideMap from './RideMap'
 import ShareCard from './ShareCard'
 
 export default function RideSummary() {
   const { id } = useParams()
   const [ride, setRide] = useState<Ride | null | undefined>(undefined)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+  const posterRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!id) return
@@ -41,6 +46,28 @@ export default function RideSummary() {
     window.location.href = '/history'
   }
 
+  const handleExport = async () => {
+    if (!posterRef.current) return
+    setExporting(true)
+    setExportError(null)
+    try {
+      const blob = await renderSharePng({
+        ride,
+        cardNode: posterRef.current,
+      })
+      await sharePng({
+        blob,
+        filename: `mototrack-${ride.id.slice(0, 8)}.png`,
+        title: 'MotoTrack ride',
+        text: ride.name ?? 'My ride',
+      })
+    } catch (err: unknown) {
+      setExportError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-4 p-4">
       <div className="h-64">
@@ -56,10 +83,11 @@ export default function RideSummary() {
       <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
-          disabled
+          onClick={() => void handleExport()}
+          disabled={exporting}
           className="rounded-xl bg-moto-orange py-3 font-semibold text-white transition active:scale-[0.98] disabled:opacity-60"
         >
-          Export PNG (next step)
+          {exporting ? 'Generating…' : 'Export PNG'}
         </button>
         <button
           type="button"
@@ -70,12 +98,31 @@ export default function RideSummary() {
         </button>
       </div>
 
+      {exportError && (
+        <p className="text-sm text-red-400">Export failed: {exportError}</p>
+      )}
+
       <Link
         to="/history"
         className="mt-2 text-center text-sm text-neutral-400 hover:text-white"
       >
         ← Back to history
       </Link>
+
+      {/* Off-screen poster-sized card used only during PNG export. */}
+      <div
+        style={{
+          position: 'absolute',
+          left: -99999,
+          top: 0,
+          pointerEvents: 'none',
+        }}
+        aria-hidden="true"
+      >
+        <div ref={posterRef}>
+          <ShareCard ride={ride} poster />
+        </div>
+      </div>
     </div>
   )
 }

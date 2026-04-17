@@ -10,7 +10,7 @@ import { getDeviceId } from './deviceId'
  */
 export async function seedDemoRide(): Promise<Ride> {
   const startedAt = Date.now() - 75 * 60 * 1000 // 75 minutes ago
-  const centre = { lat: 19.076, lng: 72.8777 }
+  const centre = { lat: 20.7619, lng: 73.377 } // Vansda, Gujarat
   const pointCount = 450
   const track: TrackPoint[] = []
   let ts = startedAt
@@ -45,7 +45,7 @@ export async function seedDemoRide(): Promise<Ride> {
     track,
     stats: computeStats(track, startedAt, endedAt),
     syncedAt: null,
-    name: 'Demo ride — Mumbai loop',
+    name: 'Demo ride — Vansda loop',
   }
 
   await saveRide(ride)

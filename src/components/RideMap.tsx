@@ -19,7 +19,7 @@ type Props = {
   className?: string
 }
 
-const DEFAULT_CENTRE: [number, number] = [19.076, 72.8777] // Mumbai fallback
+const DEFAULT_CENTRE: [number, number] = [20.7619, 73.377] // Vansda, Gujarat
 const DEFAULT_ZOOM = 15
 
 export default function RideMap({
