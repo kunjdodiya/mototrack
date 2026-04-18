@@ -88,7 +88,7 @@ The living map of what exists in this repo and where. **Update this file every t
 - `src/features/share/exportPng.ts` — offscreen-canvas PNG compositor (1080×1620: OSM tiles + route + stats card with embedded speed graph)
 - `src/features/share/projection.ts` — Web Mercator helpers for tile coordinates
 - `src/features/share/share.ts` — web `sharePng()` wrapper
-- `src/components/ShareCard.tsx` — DOM stats card (ride name title, bike chip, speed graph, 7 stat tiles incl. avg/top speed + idle + max lean); rendered inline + off-screen at 1080 for html-to-image
+- `src/components/ShareCard.tsx` — DOM stats card (ride name title, bike chip, speed graph, 8 stat tiles: distance, duration, moving time, idle time, avg/top speed, max lean, elev gain); rendered inline + off-screen at 1080 for html-to-image
 
 ## PWA
 

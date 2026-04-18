@@ -104,6 +104,13 @@ export default function ShareCard({ ride, poster = false }: Props) {
           poster={poster}
         />
         <Stat
+          label="Moving time"
+          value={formatDuration(stats.movingDurationMs)}
+          labelSize={labelSize}
+          valueSize={valueSize}
+          poster={poster}
+        />
+        <Stat
           label="Idle time"
           value={formatDuration(stats.idleDurationMs)}
           labelSize={labelSize}
