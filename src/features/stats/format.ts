@@ -26,6 +26,12 @@ export function formatElevation(m: number | null): string {
   return `${Math.round(m)} m`
 }
 
+/** Degrees → "38°" or "—" if null. */
+export function formatLeanAngle(deg: number | null | undefined): string {
+  if (deg == null) return '—'
+  return `${Math.round(deg)}°`
+}
+
 /** Ms epoch → "Apr 17, 2026 · 11:55 AM" */
 export function formatDateTime(ts: number): string {
   return new Date(ts).toLocaleString(undefined, {

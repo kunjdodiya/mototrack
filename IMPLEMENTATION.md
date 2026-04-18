@@ -42,7 +42,7 @@ The living map of what exists in this repo and where. **Update this file every t
 - `src/features/recorder/smoothing.test.ts` — unit tests for accept/reject rules
 - `src/features/recorder/wakeLock.ts` — web Wake Lock API wrapper
 - `src/features/recorder/useRecorder.ts` — Zustand store; start/pause/resume/stop/reset
-- `src/components/RecordScreen.tsx` — main recording UI; shows `LocationBlockedCard` on permission denial
+- `src/components/RecordScreen.tsx` — pre-ride form (ride name + bike dropdown sourced from Dexie `bikes` table), live stats + map during recording; shows `LocationBlockedCard` on permission denial
 - `src/components/LocationBlockedCard.tsx` — shown when GPS is denied; iOS-specific instructions + retry button
 - `src/components/LocationBlockedCard.test.tsx` — renders iOS copy when UA is iPhone Safari
 - `src/components/LiveStats.tsx` — live distance/duration/speed readout during recording
@@ -52,31 +52,43 @@ The living map of what exists in this repo and where. **Update this file every t
 
 - `src/features/stats/haversine.ts` — great-circle distance in meters
 - `src/features/stats/haversine.test.ts` — known-distance unit tests
-- `src/features/stats/computeStats.ts` — distance/duration/speed/elevation from a `TrackPoint[]`
+- `src/features/stats/computeStats.ts` — distance/duration/speed/elevation/idle/lean from a `TrackPoint[]`
 - `src/features/stats/computeStats.test.ts` — fixtures for empty/single-point/multi-point tracks
-- `src/features/stats/format.ts` — `formatDistance`, `formatDuration`, `formatDateTime`
+- `src/features/stats/leanAngle.ts` — peak lean-angle estimate from GPS trajectory (bearing-change × speed)
+- `src/features/stats/leanAngle.test.ts` — straight-line, tight-arc, and noise-rejection cases
+- `src/features/stats/totals.ts` — `sumTotals()` aggregates rider-wide totals from the Dexie ride list
+- `src/features/stats/totals.test.ts` — empty + multi-ride aggregation
+- `src/features/stats/format.ts` — `formatDistance`, `formatDuration`, `formatSpeed`, `formatElevation`, `formatLeanAngle`, `formatDateTime`
 
 ## Storage — Dexie + Supabase
 
-- `src/features/storage/db.ts` — Dexie instance; `rides` table schema (indexes on `startedAt`, `syncedAt`)
+- `src/features/storage/db.ts` — Dexie v2: `rides` + `bikes` tables; v2 upgrade backfills `idleDurationMs` + `maxLeanAngleDeg` on pre-existing rides
 - `src/features/storage/rides.ts` — CRUD: `saveRide`, `getRide`, `listRides`, `deleteRide`, `markSynced`
-- `src/features/storage/sync.ts` — `pushRide(ride)`, `syncUnsyncedRides()`; scoped by Google user's `auth.uid()`
+- `src/features/storage/bikes.ts` — CRUD: `listBikes`, `getBike`, `addBike`, `renameBike`, `deleteBike`, `markBikeSynced`
+- `src/features/storage/sync.ts` — `pushRide`, `pushBike`, `syncUnsyncedRides()`; scoped by Google user's `auth.uid()`
 - `src/features/storage/deviceId.ts` — stable device UUID for analytics/debugging
 - `src/features/storage/demoRide.ts` — dev-only seed for a synthetic ride
 
 ## History + Ride detail
 
-- `src/components/HistoryList.tsx` — newest-first ride list; live-queried via dexie-react-hooks
+- `src/components/HistoryList.tsx` — newest-first ride list; live-queried via dexie-react-hooks; shows ride name + bike chip when present
 - `src/components/RideSummary.tsx` — detail view: map + stats + PNG share
 - `src/components/RideMap.tsx` — Leaflet map wrapper
+- `src/components/SpeedGraph.tsx` — SVG speed-over-distance graph; inline + poster layouts for PNG export
+- `src/components/SpeedGraph.test.tsx` — placeholder + render smoke tests
 - `src/features/map/leafletIcons.ts` — custom start/end markers
+
+## Profile — per-user page
+
+- `src/components/ProfileScreen.tsx` — rider email, aggregate totals (count/distance/time/top speed/max lean), bike management (add/remove)
+- `src/components/ProfileScreen.test.tsx` — render smoke test (routes mocked)
 
 ## Share
 
-- `src/features/share/exportPng.ts` — offscreen-canvas PNG compositor (OSM tiles + route + stats card)
+- `src/features/share/exportPng.ts` — offscreen-canvas PNG compositor (1080×1620: OSM tiles + route + stats card with embedded speed graph)
 - `src/features/share/projection.ts` — Web Mercator helpers for tile coordinates
 - `src/features/share/share.ts` — web `sharePng()` wrapper
-- `src/components/ShareCard.tsx` — DOM stats card rendered by html-to-image
+- `src/components/ShareCard.tsx` — DOM stats card (ride name title, bike chip, speed graph, 7 stat tiles incl. avg/top speed + idle + max lean); rendered inline + off-screen at 1080 for html-to-image
 
 ## PWA
 
@@ -89,14 +101,15 @@ The living map of what exists in this repo and where. **Update this file every t
 ## Routing + shell
 
 - `src/main.tsx` — React root; mounts router; registers service worker
-- `src/router.tsx` — routes: `/`, `/history`, `/ride/:id`, `/auth/callback`; all app routes wrapped in `<AuthGate>`
-- `src/App.tsx` — layout: header (logo + nav + sign-out) + nested `<Outlet />`
-- `src/index.css` — Tailwind entry + global styles
+- `src/router.tsx` — routes: `/`, `/history`, `/ride/:id`, `/profile`, `/auth/callback`; all app routes wrapped in `<AuthGate>`
+- `src/App.tsx` — layout: header (logo + Record/History/Profile nav + sign-out) + nested `<Outlet />`
+- `src/index.css` — Tailwind entry + global styles; Inter as the primary font family
 - `src/test/setup.ts` — Vitest setup; imports `@testing-library/jest-dom`
+- `index.html` — loads Inter from Google Fonts (preconnected) for modern sans-serif typography
 
 ## Supabase
 
-- `supabase/schema.sql` — `public.rides` table + RLS policies scoped by `auth.uid()`
+- `supabase/schema.sql` — `public.rides` (with `name` + `bike_id`) and `public.bikes` tables; RLS scoped by `auth.uid()` on both. Idempotent — safe to re-run on existing projects.
 
 ## Native
 
@@ -107,4 +120,5 @@ The living map of what exists in this repo and where. **Update this file every t
 
 ## Types
 
-- `src/types/ride.ts` — `TrackPoint`, `RideStats`, `Ride`
+- `src/types/ride.ts` — `TrackPoint`, `RideStats` (includes `idleDurationMs`, `maxLeanAngleDeg`), `Ride` (optional `name`, `bikeId`)
+- `src/types/bike.ts` — `Bike` (`id`, `name`, `createdAt`, `syncedAt`)

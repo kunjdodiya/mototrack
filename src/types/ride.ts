@@ -11,8 +11,10 @@ export type RideStats = {
   distanceMeters: number
   durationMs: number
   movingDurationMs: number
+  idleDurationMs: number
   avgSpeedMps: number | null
   maxSpeedMps: number | null
+  maxLeanAngleDeg: number | null
   elevationGainMeters: number | null
 }
 
@@ -25,4 +27,5 @@ export type Ride = {
   stats: RideStats
   syncedAt: number | null
   name?: string
+  bikeId?: string
 }

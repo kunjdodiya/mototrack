@@ -38,6 +38,14 @@ export default function App() {
             >
               History
             </NavLink>
+            <NavLink
+              to="/profile"
+              className={({ isActive }) =>
+                isActive ? 'text-white' : 'hover:text-white'
+              }
+            >
+              Profile
+            </NavLink>
             {email && (
               <span className="hidden max-w-[10rem] truncate text-xs text-neutral-500 sm:inline">
                 {email}

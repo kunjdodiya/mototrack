@@ -69,3 +69,27 @@ Do not rewrite old entries. If a decision is reversed, add a new entry that supe
 **Decision:** `scripts/agents-check.mjs` is a Node script wired as `npm run agents:check`. It validates that every file path mentioned in `IMPLEMENTATION.md` exists, that `DECISIONS.md` has no unclosed drafts, and that `AGENTS.md` references resolve. Agents run it before handoff. CI mode (`--ci`) additionally fails on a dirty git tree.
 
 **Consequences:** Docs can't silently lie. Onboarding a new agent in session N+1 is a 3-file read with an auto-verified index. The script is small enough to teach new rules when conventions evolve.
+
+## 2026-04-18 — Lean angle estimated from GPS trajectory, not IMU
+
+**Context:** Owner wants a "max lean angle" stat on each ride. True lean requires gyro/accelerometer data (DeviceOrientation on web, CoreMotion on iOS, SensorManager on Android) — three platform adapters, three permission prompts, and a class of values that's still noisy without Kalman filtering.
+
+**Decision:** Estimate peak lean from the existing GPS track. For each 3-point window we compute the bearing-change rate ω (rad/s) and the segment speed v (m/s), then lean = `atan(v·ω/g)`. Segments below ~3 m/s are ignored (GPS noise fakes huge ω at standstill) and results above 55° are discarded as obvious outliers. Implemented in `src/features/stats/leanAngle.ts`.
+
+**Consequences:** Zero new permissions, zero new platform code, works identically on web/iOS/Android. The number is an estimate — sustained cornering reads accurate within a few degrees; quick flicks will under-read because GPS sample rate (1–2 Hz) misses the peak. If a future rider demands true lean we add a Capacitor motion plugin behind the existing `Platform` interface and prefer the IMU value when available — the type (`RideStats.maxLeanAngleDeg: number | null`) stays stable.
+
+## 2026-04-18 — Bikes as a per-user Dexie table synced to Supabase
+
+**Context:** Owner wants riders to register their bikes and tag each ride with one. Options: bikes as a free-text field on each ride (cheap, but no totals-per-bike), bikes as a separate entity only in Supabase (breaks offline), or bikes as a first-class Dexie table with its own sync.
+
+**Decision:** New `bikes` Dexie table (`db.ts` bumped to v2 with an upgrade function that also backfills `idleDurationMs`/`maxLeanAngleDeg` on pre-existing rides) plus a matching `public.bikes` Supabase table with RLS scoped by `auth.uid()`. `Ride.bikeId` is an optional foreign key — rides without a bike stay valid. Bikes sync on sign-in via `syncUnsyncedRides()` (renamed in spirit; still called that for backwards compat).
+
+**Consequences:** Riders can add a bike, pick it at ride start, and see per-bike ride counts on `/profile`. Delete-bike keeps the associated rides and only orphans the label (RLS cascade is only on `user_id`, not `bike_id`). Offline-first is preserved — the bike is saved locally first, the cloud push is fire-and-forget like rides.
+
+## 2026-04-18 — Inter as the canonical sans-serif, loaded from Google Fonts
+
+**Context:** Owner asked for a "very modern sans-serif." Default `-apple-system` stack renders San Francisco on iOS, Segoe UI on Windows, Roboto on Android — inconsistent, no tight letterforms at the sizes the Strava-style export poster uses.
+
+**Decision:** Load Inter 400/500/600/700/800 from Google Fonts in `index.html` with `preconnect` on both `fonts.googleapis.com` and `fonts.gstatic.com`. Keep the system stack as fallback so first paint never waits on the CDN. Tailwind + `body` CSS + `ShareCard` inline style all declare Inter first.
+
+**Consequences:** The PWA service worker caches font files after the first load — subsequent visits are offline-capable. html-to-image picks up the computed font-family on the off-screen poster node, so the PNG export renders Inter correctly. If Google Fonts becomes an availability concern the swap is one `<link>` edit away (or move to `@fontsource-variable/inter` for self-hosting).

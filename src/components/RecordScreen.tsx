@@ -1,6 +1,9 @@
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { useRecorder } from '../features/recorder/useRecorder'
+import { db } from '../features/storage/db'
 import LiveStats from './LiveStats'
 import RideMap from './RideMap'
 import LocationBlockedCard from './LocationBlockedCard'
@@ -19,19 +22,35 @@ export default function RecordScreen() {
   const stop = useRecorder((s) => s.stop)
   const reset = useRecorder((s) => s.reset)
 
+  const bikes = useLiveQuery(() => db.bikes.orderBy('createdAt').toArray(), [], [])
+
+  const [rideName, setRideName] = useState('')
+  const [selectedBikeId, setSelectedBikeId] = useState<string>('')
+
   const idle = status === 'idle'
   const recording = status === 'recording'
   const paused = status === 'paused'
   const saving = status === 'saving'
 
+  const handleStart = () => {
+    void start({
+      name: rideName.trim() || undefined,
+      bikeId: selectedBikeId || undefined,
+    })
+  }
+
   const handleStop = async () => {
     const ride = await stop()
-    if (ride) navigate(`/ride/${ride.id}`)
+    if (ride) {
+      setRideName('')
+      setSelectedBikeId('')
+      navigate(`/ride/${ride.id}`)
+    }
   }
 
   const handleRetry = () => {
     reset()
-    void start()
+    handleStart()
   }
 
   if (error?.kind === 'permission-denied') {
@@ -56,10 +75,53 @@ export default function RecordScreen() {
                 : "Tap Start, keep the screen on, and ride. We'll track your route."}
             </p>
           </div>
+
+          <div className="flex w-full flex-col gap-3 text-left">
+            <label className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+              Ride name
+              <input
+                type="text"
+                value={rideName}
+                onChange={(e) => setRideName(e.target.value)}
+                placeholder="Sunday morning twisties"
+                maxLength={60}
+                className="mt-1 block w-full rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-base font-medium text-white placeholder:text-neutral-600 focus:border-moto-orange focus:outline-none"
+              />
+            </label>
+
+            <label className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+              Bike
+              {bikes.length === 0 ? (
+                <div className="mt-1 flex items-center justify-between gap-2 rounded-xl border border-dashed border-neutral-800 bg-neutral-950 px-4 py-3 text-sm text-neutral-400">
+                  <span>No bikes yet.</span>
+                  <Link
+                    to="/profile"
+                    className="font-semibold text-moto-orange hover:underline"
+                  >
+                    Add one →
+                  </Link>
+                </div>
+              ) : (
+                <select
+                  value={selectedBikeId}
+                  onChange={(e) => setSelectedBikeId(e.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-base font-medium text-white focus:border-moto-orange focus:outline-none"
+                >
+                  <option value="">— none —</option>
+                  {bikes.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </label>
+          </div>
+
           <button
             type="button"
-            onClick={() => void start()}
-            className="h-40 w-40 rounded-full bg-moto-orange text-xl font-semibold text-white shadow-lg shadow-moto-orange/30 transition active:scale-95"
+            onClick={handleStart}
+            className="h-40 w-40 rounded-full bg-moto-orange text-xl font-semibold tracking-tight text-white shadow-lg shadow-moto-orange/30 transition active:scale-95"
           >
             Start
           </button>

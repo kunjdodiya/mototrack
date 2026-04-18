@@ -11,16 +11,23 @@ import { getDeviceId } from '../storage/deviceId'
 
 export type RecorderStatus = 'idle' | 'recording' | 'paused' | 'saving'
 
+export type StartOpts = {
+  name?: string
+  bikeId?: string
+}
+
 type RecorderState = {
   status: RecorderStatus
   points: TrackPoint[]
   startedAt: number | null
+  name: string | null
+  bikeId: string | null
   liveDistanceMeters: number
   liveDurationMs: number
   liveSpeedMps: number | null
   error: GeoError | null
 
-  start: () => Promise<void>
+  start: (opts?: StartOpts) => Promise<void>
   pause: () => void
   resume: () => void
   stop: () => Promise<Ride | null>
@@ -47,12 +54,14 @@ export const useRecorder = create<RecorderState>((set, get) => ({
   status: 'idle',
   points: [],
   startedAt: null,
+  name: null,
+  bikeId: null,
   liveDistanceMeters: 0,
   liveDurationMs: 0,
   liveSpeedMps: null,
   error: null,
 
-  start: async () => {
+  start: async (opts?: StartOpts) => {
     if (get().status !== 'idle') return
 
     const startedAt = Date.now()
@@ -60,6 +69,8 @@ export const useRecorder = create<RecorderState>((set, get) => ({
       status: 'recording',
       startedAt,
       points: [],
+      name: opts?.name?.trim() || null,
+      bikeId: opts?.bikeId || null,
       liveDistanceMeters: 0,
       liveDurationMs: 0,
       liveSpeedMps: null,
@@ -109,7 +120,7 @@ export const useRecorder = create<RecorderState>((set, get) => ({
   },
 
   stop: async () => {
-    const { status, points, startedAt } = get()
+    const { status, points, startedAt, name, bikeId } = get()
     if (status === 'idle' || startedAt == null) return null
 
     set({ status: 'saving' })
@@ -125,6 +136,8 @@ export const useRecorder = create<RecorderState>((set, get) => ({
       track: points,
       stats,
       syncedAt: null,
+      ...(name ? { name } : {}),
+      ...(bikeId ? { bikeId } : {}),
     }
 
     await saveRide(ride)
@@ -145,6 +158,8 @@ export const useRecorder = create<RecorderState>((set, get) => ({
       status: 'idle',
       points: [],
       startedAt: null,
+      name: null,
+      bikeId: null,
       liveDistanceMeters: 0,
       liveDurationMs: 0,
       liveSpeedMps: null,

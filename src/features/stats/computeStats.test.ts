@@ -19,8 +19,10 @@ describe('computeStats', () => {
     const s = computeStats([], 1_000, 2_000)
     expect(s.distanceMeters).toBe(0)
     expect(s.durationMs).toBe(1_000)
+    expect(s.idleDurationMs).toBe(1_000)
     expect(s.avgSpeedMps).toBeNull()
     expect(s.maxSpeedMps).toBeNull()
+    expect(s.maxLeanAngleDeg).toBeNull()
     expect(s.elevationGainMeters).toBeNull()
   })
 
@@ -50,6 +52,7 @@ describe('computeStats', () => {
     const s = computeStats(track, 0, 30_000)
     expect(s.movingDurationMs).toBeGreaterThan(0)
     expect(s.movingDurationMs).toBeLessThanOrEqual(s.durationMs)
+    expect(s.idleDurationMs).toBe(s.durationMs - s.movingDurationMs)
   })
 
   it('returns null elevationGain if any point is missing altitude', () => {

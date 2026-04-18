@@ -15,6 +15,8 @@ export default function HistoryList() {
     [],
     [],
   )
+  const bikes = useLiveQuery(() => db.bikes.toArray(), [], [])
+  const bikeNameById = new Map(bikes.map((b) => [b.id, b.name]))
 
   const handleSeed = async () => {
     const ride = await seedDemoRide()
@@ -24,7 +26,7 @@ export default function HistoryList() {
   return (
     <div className="mx-auto max-w-xl p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">History</h1>
+        <h1 className="text-2xl font-bold tracking-tight">History</h1>
         {import.meta.env.DEV && (
           <button
             type="button"
@@ -41,27 +43,37 @@ export default function HistoryList() {
         </p>
       ) : (
         <ul className="mt-4 space-y-2">
-          {rides.map((r) => (
-            <li key={r.id}>
-              <Link
-                to={`/ride/${r.id}`}
-                className="block rounded-xl border border-neutral-800 bg-neutral-900/60 p-4 transition hover:border-neutral-700"
-              >
-                <div className="flex items-baseline justify-between">
-                  <div className="font-medium">
-                    {r.name ?? formatDateTime(r.startedAt)}
+          {rides.map((r) => {
+            const bikeName = r.bikeId ? bikeNameById.get(r.bikeId) : null
+            return (
+              <li key={r.id}>
+                <Link
+                  to={`/ride/${r.id}`}
+                  className="block rounded-xl border border-neutral-800 bg-neutral-900/60 p-4 transition hover:border-neutral-700"
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="min-w-0 flex-1 truncate font-semibold tracking-tight">
+                      {r.name ?? formatDateTime(r.startedAt)}
+                    </div>
+                    <div className="text-sm text-neutral-400">
+                      {r.syncedAt ? 'Synced' : 'Local'}
+                    </div>
                   </div>
-                  <div className="text-sm text-neutral-400">
-                    {r.syncedAt ? 'Synced' : 'Local'}
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-neutral-400">
+                    <span>{formatDistance(r.stats.distanceMeters)}</span>
+                    <span>·</span>
+                    <span>{formatDuration(r.stats.durationMs)}</span>
+                    {bikeName && (
+                      <>
+                        <span>·</span>
+                        <span className="text-neutral-300">🏍 {bikeName}</span>
+                      </>
+                    )}
                   </div>
-                </div>
-                <div className="mt-1 text-sm text-neutral-400">
-                  {formatDistance(r.stats.distanceMeters)} ·{' '}
-                  {formatDuration(r.stats.durationMs)}
-                </div>
-              </Link>
-            </li>
-          ))}
+                </Link>
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>

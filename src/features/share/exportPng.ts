@@ -8,7 +8,9 @@ import {
 } from './projection'
 
 const CANVAS_W = 1080
-const CANVAS_H = 1350
+// Taller poster: the card now holds a speed graph + 7 stat tiles, so the map
+// still needs ~600px to read well.
+const CANVAS_H = 1620
 
 type ExportOpts = {
   ride: Ride

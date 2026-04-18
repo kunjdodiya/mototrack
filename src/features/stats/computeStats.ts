@@ -1,5 +1,6 @@
 import type { RideStats, TrackPoint } from '../../types/ride'
 import { haversine } from './haversine'
+import { maxLeanAngleDeg } from './leanAngle'
 
 /** Centered 5-point moving average on altitude. Undefined for <5 points. */
 function smoothAlt(points: TrackPoint[]): (number | null)[] {
@@ -16,13 +17,17 @@ export function computeStats(
   startedAt: number,
   endedAt: number,
 ): RideStats {
+  const totalDuration = Math.max(0, endedAt - startedAt)
+
   if (points.length < 2) {
     return {
       distanceMeters: 0,
-      durationMs: Math.max(0, endedAt - startedAt),
+      durationMs: totalDuration,
       movingDurationMs: 0,
+      idleDurationMs: totalDuration,
       avgSpeedMps: null,
       maxSpeedMps: null,
+      maxLeanAngleDeg: null,
       elevationGainMeters: null,
     }
   }
@@ -37,8 +42,6 @@ export function computeStats(
     const d = haversine(a.lat, a.lng, b.lat, b.lng)
     distance += d
     const dt = b.ts - a.ts
-    // Derived speed for this segment (m/s); covers the case where the device
-    // never populated `speed` on the GeolocationPosition.
     const segSpeed = dt > 0 ? d / (dt / 1000) : 0
     if (segSpeed > 0.5) movingMs += dt
 
@@ -48,9 +51,6 @@ export function computeStats(
     }
   }
 
-  // Elevation gain: only compute if every point has altitude. Browser GPS
-  // altitudes are notoriously jittery, so we smooth before summing positive
-  // deltas. Single missing reading invalidates the whole metric.
   let elevationGain: number | null = null
   const anyMissingAlt = points.some((p) => p.alt == null)
   if (!anyMissingAlt) {
@@ -67,16 +67,18 @@ export function computeStats(
     elevationGain = gain
   }
 
-  const durationMs = endedAt - startedAt
   const movingSeconds = movingMs / 1000
   const avgSpeed = movingSeconds > 0 ? distance / movingSeconds : null
+  const idleDurationMs = Math.max(0, totalDuration - movingMs)
 
   return {
     distanceMeters: distance,
-    durationMs,
+    durationMs: totalDuration,
     movingDurationMs: movingMs,
+    idleDurationMs,
     avgSpeedMps: avgSpeed,
     maxSpeedMps: maxSpeed,
+    maxLeanAngleDeg: maxLeanAngleDeg(points),
     elevationGainMeters: elevationGain,
   }
 }
