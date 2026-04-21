@@ -11,6 +11,7 @@ import {
 import { combineTripStats } from '../features/trips/combineStats'
 import { TRIP_COVER_CLASS } from '../features/trips/covers'
 import { renderTripSharePng } from '../features/share/exportTripPng'
+import { renderTripOverlayPng } from '../features/share/exportTripOverlayPng'
 import { platform } from '../features/platform'
 import {
   formatDateTime,
@@ -23,6 +24,7 @@ import {
 import TripMap from './TripMap'
 import BackLink from './BackLink'
 import AddRidesToTripSheet from './AddRidesToTripSheet'
+import ShareFormatPicker, { type ShareFormat } from './ShareFormatPicker'
 
 type LoadState = 'loading' | 'ready' | 'not-found'
 
@@ -36,6 +38,7 @@ export default function TripDetailScreen() {
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const [picking, setPicking] = useState(false)
+  const [sharePicker, setSharePicker] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -85,15 +88,20 @@ export default function TripDetailScreen() {
     navigate('/trips', { replace: true })
   }
 
-  const handleShare = async () => {
+  const handleShare = async (format: ShareFormat) => {
     if (!trip) return
+    setSharePicker(false)
     setExporting(true)
     setExportError(null)
     try {
-      const blob = await renderTripSharePng({ trip, rides })
+      const blob =
+        format === 'overlay'
+          ? await renderTripOverlayPng({ trip, rides })
+          : await renderTripSharePng({ trip, rides })
+      const suffix = format === 'overlay' ? 'overlay' : 'story'
       await platform.sharePng({
         blob,
-        filename: `mototrack-trip-${trip.id.slice(0, 8)}.png`,
+        filename: `mototrack-trip-${suffix}-${trip.id.slice(0, 8)}.png`,
         title: `MotoTrack trip — ${trip.name}`,
         text: trip.name,
       })
@@ -195,7 +203,7 @@ export default function TripDetailScreen() {
       <section className="animate-fade-up" style={{ animationDelay: '120ms' }}>
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="font-display text-lg font-bold tracking-tight">
-            Day by day
+            Session by session
           </h2>
           <div className="flex items-center gap-2">
             {rides.length > 0 && (
@@ -273,11 +281,11 @@ export default function TripDetailScreen() {
       >
         <button
           type="button"
-          onClick={() => void handleShare()}
+          onClick={() => setSharePicker(true)}
           disabled={exporting || rides.length === 0}
           className="rounded-2xl bg-brand-gradient py-4 text-base font-semibold text-white shadow-glow-orange transition active:scale-[0.98] disabled:opacity-40"
         >
-          {exporting ? 'Generating…' : 'Share to Story'}
+          {exporting ? 'Generating…' : 'Share'}
         </button>
         <button
           type="button"
@@ -289,7 +297,8 @@ export default function TripDetailScreen() {
       </div>
 
       <p className="-mt-2 text-center text-xs text-neutral-500">
-        Shares a 1080×1920 Instagram Story — full trip route + combined stats.
+        Pick a branded Story poster or a transparent overlay with the multi-day
+        route and combined distance + time.
       </p>
 
       {exportError && (
@@ -303,6 +312,13 @@ export default function TripDetailScreen() {
           tripId={trip.id}
           onClose={() => setPicking(false)}
           onAdded={() => void reloadRides()}
+        />
+      )}
+
+      {sharePicker && (
+        <ShareFormatPicker
+          onPick={(format) => void handleShare(format)}
+          onClose={() => setSharePicker(false)}
         />
       )}
     </div>

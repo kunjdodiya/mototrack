@@ -3,17 +3,20 @@ import { Link, useParams } from 'react-router-dom'
 import type { Ride } from '../types/ride'
 import { getRide, deleteRide } from '../features/storage/rides'
 import { renderSharePng } from '../features/share/exportPng'
+import { renderOverlayPng } from '../features/share/exportOverlayPng'
 import { platform } from '../features/platform'
 import { formatDateTime } from '../features/stats/format'
 import RideMap from './RideMap'
 import ShareCard from './ShareCard'
 import AddToTripSheet from './AddToTripSheet'
+import ShareFormatPicker, { type ShareFormat } from './ShareFormatPicker'
 
 export default function RideSummary() {
   const { id } = useParams()
   const [ride, setRide] = useState<Ride | null | undefined>(undefined)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [picker, setPicker] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -61,14 +64,19 @@ export default function RideSummary() {
     window.location.href = '/history'
   }
 
-  const handleShare = async () => {
+  const handleShare = async (format: ShareFormat) => {
+    setPicker(false)
     setExporting(true)
     setExportError(null)
     try {
-      const blob = await renderSharePng({ ride })
+      const blob =
+        format === 'overlay'
+          ? await renderOverlayPng({ ride })
+          : await renderSharePng({ ride })
+      const suffix = format === 'overlay' ? 'overlay' : 'story'
       await platform.sharePng({
         blob,
-        filename: `mototrack-${ride.id.slice(0, 8)}.png`,
+        filename: `mototrack-${suffix}-${ride.id.slice(0, 8)}.png`,
         title: 'MotoTrack ride',
         text: ride.name ?? 'My ride on MotoTrack',
       })
@@ -122,11 +130,11 @@ export default function RideSummary() {
       <div className="grid animate-fade-up grid-cols-2 gap-3" style={{ animationDelay: '120ms' }}>
         <button
           type="button"
-          onClick={() => void handleShare()}
+          onClick={() => setPicker(true)}
           disabled={exporting}
           className="rounded-2xl bg-brand-gradient py-4 text-base font-semibold text-white shadow-glow-orange transition active:scale-[0.98] disabled:opacity-60"
         >
-          {exporting ? 'Generating…' : 'Share to Story'}
+          {exporting ? 'Generating…' : 'Share'}
         </button>
         <button
           type="button"
@@ -138,11 +146,19 @@ export default function RideSummary() {
       </div>
 
       <p className="-mt-2 text-center text-xs text-neutral-500">
-        Exports a 1080×1920 Instagram Story — pick Instagram, WhatsApp, or any other app from your share sheet.
+        Pick a branded Story poster or a transparent overlay you can drop on
+        top of your own photo.
       </p>
 
       {exportError && (
         <p className="text-center text-sm text-red-400">Export failed: {exportError}</p>
+      )}
+
+      {picker && (
+        <ShareFormatPicker
+          onPick={(format) => void handleShare(format)}
+          onClose={() => setPicker(false)}
+        />
       )}
 
       <Link

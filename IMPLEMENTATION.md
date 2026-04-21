@@ -106,6 +106,10 @@ The living map of what exists in this repo and where. **Update this file every t
 - `src/features/share/projection.ts` — Web Mercator helpers for tile coordinates
 - `src/features/share/share.ts` — web `sharePng()` wrapper (Web Share API with files on iOS 15+/Android Chrome 89+, download fallback). On mobile the share sheet exposes "Add to Instagram Story" / "WhatsApp Status" / etc. directly — no platform-specific code needed
 - `src/components/ShareCard.tsx` — inline stats card shown on the ride summary screen (bike chip, speed graph, 8 stat tiles: distance, duration, moving time, idle time, avg/top speed, max lean, elev gain). Rounded-3xl surface with rounded-2xl tiles and a "Stats" overline. The shareable PNG is composed separately in `exportPng.ts` — ShareCard is now a pure UI surface, not a rasterisation target
+- `src/features/share/exportOverlayPng.ts` — 1080×1920 *transparent* PNG compositor for a single ride: route line (white halo + orange core), minimal speed graph, and two big numbers (DISTANCE + TIME) with drop shadows so white text stays legible on any photo underneath. Every non-stroke, non-text pixel stays fully transparent so the PNG can sit on top of a rider's own photo
+- `src/features/share/exportOverlayPng.test.ts` — throws on a single-point ride + emits a 1080×1920 PNG; stubs fetch/createImageBitmap/toBlob under jsdom
+- `src/components/ShareFormatPicker.tsx` — bottom-sheet modal that appears when a rider taps Share. Two tap targets: "Story poster" (existing 1080×1920 brand poster) and "Transparent overlay". Emits `onPick('poster' \| 'overlay')` so the caller runs the right compositor
+- `src/components/ShareFormatPicker.test.tsx` — renders both choices + Cancel, and verifies each click wires to the right callback
 
 ## PWA
 
@@ -153,6 +157,8 @@ The living map of what exists in this repo and where. **Update this file every t
 - `src/components/AddRidesToTripSheet.tsx` — full-screen multi-select modal launched from the trip detail screen; lists the rider's history via `listRides()`, hides rides already in this trip, and disables rides that are attached to a different trip (shows the other trip's name). Sticky "Add N rides" footer calls `addRideToTrip` once per selected ride
 - `src/components/AddRidesToTripSheet.test.tsx` — covers hide-current + disable-other-trip + multi-select happy-path + disabled-until-one-selected + Cancel
 - `src/features/share/exportTripPng.ts` — 1080×1920 Instagram-Story PNG compositor for an entire trip: multi-day route on one map (per-day colors matching `TripMap`), brand overlay tinted by the trip's cover gradient, hero tiles (TOTAL DISTANCE + DAYS / moving time), 2×3 stat grid, date range in the subtitle. Logo drawn via the shared `drawLogoTile` + `drawLogoMark` helpers
+- `src/features/share/exportTripOverlayPng.ts` — 1080×1920 *transparent* PNG compositor for a whole trip: every day's route in per-day colors (same palette as `TripMap`), one stitched speed graph across the full trip, and total distance + total moving time as the two headline numbers. No background, no brand fills — drops cleanly over any photo
+- `src/features/share/exportTripOverlayPng.test.ts` — throws when no ride has a usable route + emits a 1080×1920 PNG for a two-day trip
 - `src/features/share/exportTripPng.test.ts` — throws when no ride has a route; produces a 1080×1920 PNG blob for a two-day trip; stubs `fetch` + `createImageBitmap` + canvas under jsdom
 - `supabase/trips.sql` — creates `public.trips` with RLS scoped by `auth.uid()` and adds `trip_id` + index on `public.rides` with `ON DELETE SET NULL` so deleting a trip detaches its rides server-side too. Idempotent — safe to re-run. Owner executes it once after `schema.sql`
 
