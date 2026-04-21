@@ -17,10 +17,16 @@ import { getBike } from '../storage/bikes'
 import { haversine } from '../stats/haversine'
 import { drawLogoMark, drawLogoTile } from './logoMark'
 
-// Instagram Stories are 9:16 at 1080×1920. Using the exact spec makes the
-// exported PNG drop straight into a Story without being letterboxed.
+// Instagram Stories are 9:16 at 1080×1920 — that's the layout we design in.
+// Everything below uses this "logical" coordinate system.
 const CANVAS_W = 1080
 const CANVAS_H = 1920
+
+// Render at 2× physical pixels (2160×3840). Instagram / WhatsApp / X
+// downscale the file at share time; starting from a 2× source gives visibly
+// crisper text, gradients, and map tiles than a 1× render does. Memory
+// footprint is ~33 MB per canvas at 2×, which Safari + Chrome handle fine.
+const PIXEL_RATIO = 2
 
 // Vertical layout — fixed pixel y-coordinates so every block has a guaranteed
 // home inside the 1920-tall canvas. Tweak here to rebalance the poster; every
@@ -85,10 +91,16 @@ export async function renderSharePng({ ride }: ExportOpts): Promise<Blob> {
   const bikeName = ride.bikeId ? (await getBike(ride.bikeId))?.name ?? null : null
 
   const canvas = document.createElement('canvas')
-  canvas.width = CANVAS_W
-  canvas.height = CANVAS_H
+  canvas.width = CANVAS_W * PIXEL_RATIO
+  canvas.height = CANVAS_H * PIXEL_RATIO
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('Canvas 2D unavailable')
+
+  // Scale once so every drawer below can keep working in 1080×1920 logical
+  // units. Text, gradients, and strokes all render at the 2× physical grid.
+  ctx.scale(PIXEL_RATIO, PIXEL_RATIO)
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
 
   // Paint the deep-black base first. Any unrendered pixel falls through to
   // this, so the overall frame stays coherent on slow tile loads.
@@ -115,30 +127,37 @@ export async function renderSharePng({ ride }: ExportOpts): Promise<Blob> {
 
 async function drawMapHero(ctx: CanvasRenderingContext2D, ride: Ride) {
   const mapH = MAP_BOTTOM - MAP_TOP
+  // The map sub-canvas is sized in PHYSICAL pixels (2× logical). That lets us
+  // pick a zoom level one step deeper than a 1× render would, so OSM/CARTO
+  // tiles land 1:1 on the physical grid — no upscale blur.
+  const mapWPx = CANVAS_W * PIXEL_RATIO
+  const mapHPx = mapH * PIXEL_RATIO
 
   const routePts = ride.track.map((p) => ({ lat: p.lat, lng: p.lng }))
-  const zoom = fitZoomForBounds(routePts, CANVAS_W, mapH, 140)
+  const zoom = fitZoomForBounds(routePts, mapWPx, mapHPx, 140 * PIXEL_RATIO)
   const centre = centreOf(routePts)
   const centreWorld = lngLatToWorldPx(centre.lng, centre.lat, zoom)
 
-  const anchorX = centreWorld.x - CANVAS_W / 2
-  const anchorY = centreWorld.y - mapH / 2
+  const anchorX = centreWorld.x - mapWPx / 2
+  const anchorY = centreWorld.y - mapHPx / 2
 
   const tileMinX = Math.floor(anchorX / TILE_SIZE)
-  const tileMaxX = Math.floor((anchorX + CANVAS_W) / TILE_SIZE)
+  const tileMaxX = Math.floor((anchorX + mapWPx) / TILE_SIZE)
   const tileMinY = Math.floor(anchorY / TILE_SIZE)
-  const tileMaxY = Math.floor((anchorY + mapH) / TILE_SIZE)
+  const tileMaxY = Math.floor((anchorY + mapHPx) / TILE_SIZE)
 
   // Draw tiles into a dedicated off-screen canvas so we can desaturate /
   // darken the map without touching the rest of the compositor.
   const mapCanvas = document.createElement('canvas')
-  mapCanvas.width = CANVAS_W
-  mapCanvas.height = mapH
+  mapCanvas.width = mapWPx
+  mapCanvas.height = mapHPx
   const mctx = mapCanvas.getContext('2d')
   if (!mctx) return
+  mctx.imageSmoothingEnabled = true
+  mctx.imageSmoothingQuality = 'high'
 
   mctx.fillStyle = '#0a0a0a'
-  mctx.fillRect(0, 0, CANVAS_W, mapH)
+  mctx.fillRect(0, 0, mapWPx, mapHPx)
 
   const tilePromises: Promise<void>[] = []
   for (let tx = tileMinX; tx <= tileMaxX; tx++) {
@@ -152,10 +171,11 @@ async function drawMapHero(ctx: CanvasRenderingContext2D, ride: Ride) {
   // full wash. Keeping the tint subtle lets the actual map read clearly.
   mctx.globalCompositeOperation = 'multiply'
   mctx.fillStyle = 'rgba(60,40,90,0.22)'
-  mctx.fillRect(0, 0, CANVAS_W, mapH)
+  mctx.fillRect(0, 0, mapWPx, mapHPx)
   mctx.globalCompositeOperation = 'source-over'
 
   // Route: white halo under a bright orange core for legibility on any tile.
+  // Stroke widths scale with PIXEL_RATIO so they stay at ~14 / 8 logical px.
   mctx.lineCap = 'round'
   mctx.lineJoin = 'round'
   mctx.beginPath()
@@ -168,13 +188,13 @@ async function drawMapHero(ctx: CanvasRenderingContext2D, ride: Ride) {
     else mctx.lineTo(x, y)
   }
   mctx.strokeStyle = 'rgba(255,255,255,0.9)'
-  mctx.lineWidth = 14
+  mctx.lineWidth = 14 * PIXEL_RATIO
   mctx.stroke()
   mctx.strokeStyle = '#ff4d00'
-  mctx.lineWidth = 8
+  mctx.lineWidth = 8 * PIXEL_RATIO
   mctx.stroke()
 
-  drawDot(mctx, ride.track[0], zoom, anchorX, anchorY, '#22c55e')
+  drawDot(mctx, ride.track[0], zoom, anchorX, anchorY, '#22c55e', PIXEL_RATIO)
   drawDot(
     mctx,
     ride.track[ride.track.length - 1],
@@ -182,9 +202,12 @@ async function drawMapHero(ctx: CanvasRenderingContext2D, ride: Ride) {
     anchorX,
     anchorY,
     '#ef4444',
+    PIXEL_RATIO,
   )
 
-  ctx.drawImage(mapCanvas, 0, MAP_TOP)
+  // Place the physical-sized map canvas into the logical 1080×mapH region.
+  // ctx is already scaled 2×, so this is a 1:1 physical blit — no resample.
+  ctx.drawImage(mapCanvas, 0, MAP_TOP, CANVAS_W, mapH)
 }
 
 // ── brand + atmospheric overlays ────────────────────────────────────────────
@@ -606,16 +629,17 @@ function drawDot(
   anchorX: number,
   anchorY: number,
   color: string,
+  scale = 1,
 ) {
   const wp = lngLatToWorldPx(p.lng, p.lat, z)
   const x = wp.x - anchorX
   const y = wp.y - anchorY
   ctx.beginPath()
-  ctx.arc(x, y, 14, 0, Math.PI * 2)
+  ctx.arc(x, y, 14 * scale, 0, Math.PI * 2)
   ctx.fillStyle = '#fff'
   ctx.fill()
   ctx.beginPath()
-  ctx.arc(x, y, 10, 0, Math.PI * 2)
+  ctx.arc(x, y, 10 * scale, 0, Math.PI * 2)
   ctx.fillStyle = color
   ctx.fill()
 }
