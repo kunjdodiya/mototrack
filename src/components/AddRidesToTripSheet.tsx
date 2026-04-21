@@ -94,15 +94,7 @@ export default function AddRidesToTripSheet({
       aria-label="Add rides to trip"
       className="fixed inset-0 z-50 flex flex-col bg-neutral-950/95 backdrop-blur-sm"
     >
-      <header className="flex items-center justify-between gap-3 border-b border-white/5 px-5 py-4">
-        <div className="flex flex-col">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">
-            Attach rides
-          </span>
-          <h2 className="font-display text-lg font-bold tracking-tight">
-            Pick from history
-          </h2>
-        </div>
+      <header className="flex items-center gap-3 border-b border-white/5 px-5 py-4">
         <button
           type="button"
           onClick={onClose}
@@ -110,6 +102,26 @@ export default function AddRidesToTripSheet({
           className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-neutral-300 transition hover:border-white/20 active:scale-[0.97] disabled:opacity-50"
         >
           Cancel
+        </button>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">
+            Attach rides
+          </span>
+          <h2 className="truncate font-display text-lg font-bold tracking-tight">
+            Pick from history
+          </h2>
+        </div>
+        <button
+          type="button"
+          onClick={() => void handleAdd()}
+          disabled={busy || selected.size === 0}
+          className="rounded-full bg-brand-gradient px-4 py-1.5 text-xs font-bold text-white shadow-glow-orange transition active:scale-[0.97] disabled:opacity-40"
+        >
+          {busy
+            ? 'Adding…'
+            : selected.size > 0
+              ? `Add ${selected.size} ride${selected.size === 1 ? '' : 's'}`
+              : 'Add rides'}
         </button>
       </header>
 
@@ -199,24 +211,10 @@ export default function AddRidesToTripSheet({
         )}
       </div>
 
-      <footer className="flex items-center gap-3 border-t border-white/5 px-5 pb-[max(env(safe-area-inset-bottom),16px)] pt-4">
-        <div className="text-xs text-neutral-400">
-          {selected.size === 0
-            ? 'Tap rides to select'
-            : `${selected.size} selected`}
-        </div>
-        <button
-          type="button"
-          onClick={() => void handleAdd()}
-          disabled={busy || selected.size === 0}
-          className="ml-auto rounded-2xl bg-brand-gradient px-5 py-3 text-sm font-bold text-white shadow-glow-orange transition active:scale-[0.98] disabled:opacity-40"
-        >
-          {busy
-            ? 'Adding…'
-            : selected.size > 0
-              ? `Add ${selected.size} ride${selected.size === 1 ? '' : 's'}`
-              : 'Add rides'}
-        </button>
+      <footer className="border-t border-white/5 px-5 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 text-center text-xs text-neutral-400">
+        {selected.size === 0
+          ? 'Tap rides to select'
+          : `${selected.size} selected`}
       </footer>
     </div>
   )
