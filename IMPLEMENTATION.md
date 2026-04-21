@@ -47,7 +47,9 @@ The living map of what exists in this repo and where. **Update this file every t
 - `src/features/recorder/smoothing.test.ts` — unit tests for accept/reject rules
 - `src/features/recorder/wakeLock.ts` — web Wake Lock API wrapper
 - `src/features/recorder/useRecorder.ts` — Zustand store; start/pause/resume/stop/reset
-- `src/components/RecordScreen.tsx` — pre-ride form (ride name + bike dropdown sourced from Dexie `bikes` table), live stats + map during recording; shows `LocationBlockedCard` on permission denial
+- `src/features/recorder/sound.ts` — `playStartChime()`; two-tone Web Audio chime triggered from the Start-button click so the rider gets an audible "tracking is live" confirmation. Synthesized (no asset), silent when AudioContext is unavailable
+- `src/features/recorder/sound.test.ts` — no-op-when-unavailable + schedules two oscillators on a fake AudioContext
+- `src/components/RecordScreen.tsx` — pre-ride form (ride name + bike dropdown sourced from Dexie `bikes` table), live stats + map during recording; shows `LocationBlockedCard` on permission denial. The live view enters with an `animate-launch` wrapper + one-shot `animate-launch-burst` gradient flare (defined in `tailwind.config.js`) so the transition out of the idle screen reads as deliberate rather than abrupt
 - `src/components/LocationBlockedCard.tsx` — shown when GPS is denied; iOS-specific instructions + retry button
 - `src/components/LocationBlockedCard.test.tsx` — renders iOS copy when UA is iPhone Safari
 - `src/components/LiveStats.tsx` — live distance/duration/speed readout during recording

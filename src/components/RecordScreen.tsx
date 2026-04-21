@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useRecorder } from '../features/recorder/useRecorder'
+import { playStartChime } from '../features/recorder/sound'
 import { db } from '../features/storage/db'
 import { addBike } from '../features/storage/bikes'
 import { pushBike } from '../features/storage/sync'
@@ -53,6 +54,7 @@ export default function RecordScreen() {
   const saving = status === 'saving'
 
   const handleStart = () => {
+    playStartChime()
     void start({
       name: rideName.trim() || undefined,
       bikeId: selectedBikeId || undefined,
@@ -202,7 +204,7 @@ export default function RecordScreen() {
               />
               <span className="relative">Start</span>
             </button>
-            <p className="text-xs text-neutral-500">Hold the line. Go.</p>
+            <p className="text-xs text-neutral-500">Engine roaring? Let&rsquo;s go.</p>
           </div>
 
           {error && (
@@ -212,7 +214,12 @@ export default function RecordScreen() {
           )}
         </>
       ) : (
-        <>
+        <div className="relative flex animate-launch flex-col gap-6">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-0 -z-10 h-72 w-72 -translate-x-1/2 -translate-y-16 animate-launch-burst rounded-full bg-brand-gradient blur-3xl"
+          />
+
           {!isNative && (
             <div className="animate-fade-up rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
               Keep screen on and app open. Auto-lock is disabled. Install the
@@ -279,7 +286,7 @@ export default function RecordScreen() {
               GPS error: {error.message}
             </p>
           )}
-        </>
+        </div>
       )}
     </div>
   )
