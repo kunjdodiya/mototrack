@@ -142,7 +142,8 @@ The living map of what exists in this repo and where. **Update this file every t
 - `src/App.tsx` — layout: floating `InstallHint` toast + keyed `<Outlet />` wrapped in the `page-enter` transition + persistent `BottomTabBar`
 - `src/components/BottomTabBar.tsx` — glass-blur 4-tab footer (Ride Now · My Rides · Community · My Profile) with an animated gradient pill indicator and SVG icons; respects `env(safe-area-inset-bottom)` for native notches
 - `src/components/BottomTabBar.test.tsx` — renders all tabs, links to the right routes, and marks the current route as `aria-current`
-- `src/index.css` — Tailwind entry + global mesh-gradient body background, `font-display` / `text-gradient` / `glass` utilities, `page-enter` transition, `prefers-reduced-motion` override
+- `src/index.css` — Tailwind entry + global mesh-gradient body background, layered topographic contour overlay (`body::before` screens a faint white pass of `public/topo.svg`; `body::after` masks the brand gradient through the same SVG so the contours pick up orange → magenta → violet), `font-display` / `text-gradient` / `glass` utilities, `page-enter` transition, `prefers-reduced-motion` override
+- `public/topo.svg` — reusable 900×900 tileable topographic contour pattern (nine nested "peaks" built from irregular closed paths) rendered with `stroke="currentColor"` so it inherits color from CSS; used as the body topo overlay via `background-image` + `mask-image`
 - `src/test/setup.ts` — Vitest setup; imports `@testing-library/jest-dom`
 - `index.html` — loads Inter (body) + Space Grotesk (display) + JetBrains Mono (tabular figures) from Google Fonts, preconnected
 
