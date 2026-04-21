@@ -15,6 +15,7 @@ import {
 } from '../stats/format'
 import { getBike } from '../storage/bikes'
 import { haversine } from '../stats/haversine'
+import { drawLogoMark, drawLogoTile } from './logoMark'
 
 // Instagram Stories are 9:16 at 1080×1920. Using the exact spec makes the
 // exported PNG drop straight into a Story without being letterboxed.
@@ -40,13 +41,15 @@ const HERO_TOP_Y = 1280
 const HERO_H = 170
 
 const GRID_TOP_Y = 1470
-const GRID_TILE_H = 160
+const GRID_TILE_H = 150
 const GRID_GAP = 20
 const GRID_COLS = 3
 
 const PAD_X = 72
 const TILE_GAP = 20
-const FOOTER_BASELINE_Y = 1880
+// Bottom band: [stat grid] → [MotoTrack mark] → [attribution]
+const BOTTOM_LOGO_CENTER_Y = 1843
+const FOOTER_BASELINE_Y = 1896
 
 type ExportOpts = {
   ride: Ride
@@ -94,10 +97,10 @@ export async function renderSharePng({ ride }: ExportOpts): Promise<Blob> {
 
   await drawMapHero(ctx, ride)
   drawBrandOverlay(ctx)
-  drawHeaderLogo(ctx)
   drawTitle(ctx, ride, bikeName)
   drawSpeedGraph(ctx, ride.track)
   drawStats(ctx, ride)
+  drawBottomLogo(ctx)
   drawFooter(ctx)
 
   return new Promise<Blob>((resolve, reject) => {
@@ -145,10 +148,10 @@ async function drawMapHero(ctx: CanvasRenderingContext2D, ride: Ride) {
   }
   await Promise.all(tilePromises)
 
-  // Light violet multiply tints the already-dark CARTO tiles toward the brand
-  // palette without crushing road/label detail to pure black.
+  // Very light violet multiply — just a brand hint on the CARTO tiles, not a
+  // full wash. Keeping the tint subtle lets the actual map read clearly.
   mctx.globalCompositeOperation = 'multiply'
-  mctx.fillStyle = 'rgba(60,40,90,0.55)'
+  mctx.fillStyle = 'rgba(60,40,90,0.22)'
   mctx.fillRect(0, 0, CANVAS_W, mapH)
   mctx.globalCompositeOperation = 'source-over'
 
@@ -189,28 +192,14 @@ async function drawMapHero(ctx: CanvasRenderingContext2D, ride: Ride) {
 function drawBrandOverlay(ctx: CanvasRenderingContext2D) {
   const mapH = MAP_BOTTOM - MAP_TOP
 
-  // Warm brand wash over the map — orange → magenta → violet diagonal.
+  // Gentle brand wash — orange → magenta → violet diagonal. Kept subtle so
+  // the route + map labels remain the focal point.
   const warm = ctx.createLinearGradient(0, 0, CANVAS_W, mapH)
-  warm.addColorStop(0, 'rgba(255,77,0,0.38)')
-  warm.addColorStop(0.55, 'rgba(255,45,135,0.34)')
-  warm.addColorStop(1, 'rgba(124,58,237,0.42)')
+  warm.addColorStop(0, 'rgba(255,77,0,0.12)')
+  warm.addColorStop(0.55, 'rgba(255,45,135,0.10)')
+  warm.addColorStop(1, 'rgba(124,58,237,0.14)')
   ctx.fillStyle = warm
   ctx.fillRect(0, MAP_TOP, CANVAS_W, mapH)
-
-  // Extra orange glow concentrated in the top-left behind the logo so the
-  // header pops without an opaque bar.
-  const topGlow = ctx.createRadialGradient(300, 240, 40, 300, 240, 900)
-  topGlow.addColorStop(0, 'rgba(255,77,0,0.55)')
-  topGlow.addColorStop(1, 'rgba(255,77,0,0)')
-  ctx.fillStyle = topGlow
-  ctx.fillRect(0, 0, CANVAS_W, mapH)
-
-  // Dim the top 240px a touch so the logo reads cleanly against busy tiles.
-  const topFade = ctx.createLinearGradient(0, 0, 0, 320)
-  topFade.addColorStop(0, 'rgba(10,10,10,0.55)')
-  topFade.addColorStop(1, 'rgba(10,10,10,0)')
-  ctx.fillStyle = topFade
-  ctx.fillRect(0, 0, CANVAS_W, 320)
 
   // Fade the bottom of the map into the stats panel so the title reads on
   // solid black.
@@ -240,59 +229,42 @@ function drawBrandOverlay(ctx: CanvasRenderingContext2D) {
   ctx.fillRect(0, STATS_TOP, CANVAS_W, CANVAS_H - STATS_TOP)
 }
 
-// ── header: logo + wordmark ─────────────────────────────────────────────────
+// ── bottom-centered logo + wordmark ────────────────────────────────────────
 
-function drawHeaderLogo(ctx: CanvasRenderingContext2D) {
-  const logoX = PAD_X
-  const logoY = 130
-  const logoSize = 84
+function drawBottomLogo(ctx: CanvasRenderingContext2D) {
+  const iconSize = 44
+  const wordmarkSize = 34
+  const gap = 12
+  const centerY = BOTTOM_LOGO_CENTER_Y
 
-  // Rounded black tile matching the app icon.
-  roundRect(ctx, logoX, logoY, logoSize, logoSize, 22)
-  ctx.fillStyle = '#0a0a0a'
-  ctx.fill()
-  ctx.lineWidth = 2
-  ctx.strokeStyle = 'rgba(255,255,255,0.12)'
-  ctx.stroke()
+  // Pre-measure the wordmark so the whole group can be centred horizontally.
+  ctx.font = `700 ${wordmarkSize}px "Space Grotesk", "Inter", -apple-system, BlinkMacSystemFont, sans-serif`
+  const motoWidth = ctx.measureText('Moto').width
+  const trackWidth = ctx.measureText('Track').width
+  const totalWidth = iconSize + gap + motoWidth + trackWidth
+  const startX = (CANVAS_W - totalWidth) / 2
 
-  // Mini elevation-plot mark (matches public/icon-512.svg).
-  ctx.save()
-  ctx.translate(logoX, logoY)
-  const s = logoSize / 512
-  ctx.scale(s, s)
-  ctx.strokeStyle = '#ff4d00'
-  ctx.lineWidth = 40
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-  ctx.beginPath()
-  ctx.moveTo(112, 336)
-  ctx.lineTo(192, 176)
-  ctx.lineTo(256, 288)
-  ctx.lineTo(320, 176)
-  ctx.lineTo(400, 336)
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.arc(256, 288, 20, 0, Math.PI * 2)
-  ctx.fillStyle = '#ff4d00'
-  ctx.fill()
-  ctx.restore()
+  const iconX = startX
+  const iconY = centerY - iconSize / 2
 
-  // "MotoTrack" wordmark.
-  const textX = logoX + logoSize + 22
+  // Rounded ink tile + the upgraded gradient mark (matches public/icon-512.svg).
+  drawLogoTile(ctx, iconX, iconY, iconSize, 11)
+  drawLogoMark(ctx, iconX, iconY, iconSize)
+
+  // Wordmark: gradient "Moto" + white "Track".
   ctx.textBaseline = 'middle'
   ctx.textAlign = 'left'
-  ctx.font = '700 48px "Space Grotesk", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-  ctx.fillStyle = '#ff4d00'
-  ctx.fillText('Moto', textX, logoY + logoSize / 2 - 8)
-  const motoWidth = ctx.measureText('Moto').width
+  ctx.font = `700 ${wordmarkSize}px "Space Grotesk", "Inter", -apple-system, BlinkMacSystemFont, sans-serif`
+  const textX = iconX + iconSize + gap
+  const motoGrad = ctx.createLinearGradient(textX, centerY - 18, textX + motoWidth + 60, centerY + 18)
+  motoGrad.addColorStop(0, '#ff4d00')
+  motoGrad.addColorStop(0.55, '#ff2d87')
+  motoGrad.addColorStop(1, '#7c3aed')
+  ctx.fillStyle = motoGrad
+  ctx.fillText('Moto', textX, centerY)
   ctx.fillStyle = '#ffffff'
-  ctx.fillText('Track', textX + motoWidth, logoY + logoSize / 2 - 8)
-
-  // "RIDE · RECAP" eyebrow.
-  ctx.font = '600 20px "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-  ctx.fillStyle = 'rgba(255,255,255,0.75)'
+  ctx.fillText('Track', textX + motoWidth, centerY)
   ctx.textBaseline = 'alphabetic'
-  ctx.fillText('RIDE  ·  RECAP', textX, logoY + logoSize / 2 + 26)
 }
 
 // ── title block ─────────────────────────────────────────────────────────────
