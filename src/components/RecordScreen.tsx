@@ -3,7 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useRecorder } from '../features/recorder/useRecorder'
-import { playStartChime } from '../features/recorder/sound'
+import {
+  playStartChime,
+  playPauseChime,
+  playResumeChime,
+  playStopChime,
+} from '../features/recorder/sound'
+import { platform } from '../features/platform'
 import { db } from '../features/storage/db'
 import { addBike } from '../features/storage/bikes'
 import { pushBike } from '../features/storage/sync'
@@ -55,13 +61,28 @@ export default function RecordScreen() {
 
   const handleStart = () => {
     playStartChime()
+    platform.hapticTap('heavy')
     void start({
       name: rideName.trim() || undefined,
       bikeId: selectedBikeId || undefined,
     })
   }
 
+  const handlePause = () => {
+    playPauseChime()
+    platform.hapticTap('light')
+    pause()
+  }
+
+  const handleResume = () => {
+    playResumeChime()
+    platform.hapticTap('light')
+    resume()
+  }
+
   const handleStop = async () => {
+    playStopChime()
+    platform.hapticTap('medium')
     const ride = await stop()
     if (ride) {
       setRideName('')
@@ -204,7 +225,6 @@ export default function RecordScreen() {
               />
               <span className="relative">Start</span>
             </button>
-            <p className="text-xs text-neutral-500">Engine roaring? Let&rsquo;s go.</p>
           </div>
 
           {error && (
@@ -256,7 +276,7 @@ export default function RecordScreen() {
             {recording && (
               <button
                 type="button"
-                onClick={pause}
+                onClick={handlePause}
                 className="rounded-2xl border border-white/10 bg-white/[0.04] py-4 text-base font-semibold text-white transition active:scale-[0.98] hover:bg-white/[0.08]"
               >
                 Pause
@@ -265,7 +285,7 @@ export default function RecordScreen() {
             {paused && (
               <button
                 type="button"
-                onClick={resume}
+                onClick={handleResume}
                 className="rounded-2xl bg-brand-gradient py-4 text-base font-semibold text-white shadow-glow-orange transition active:scale-[0.98]"
               >
                 Resume

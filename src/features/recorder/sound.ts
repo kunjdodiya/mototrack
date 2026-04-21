@@ -40,7 +40,9 @@ function tone(audio: AudioContext, freq: number, startAt: number, durationSec: n
   osc.stop(startAt + durationSec + 0.02)
 }
 
-export function playStartChime(): void {
+type ChimeNote = { freq: number; offset: number; duration: number }
+
+function playChime(notes: readonly ChimeNote[]): void {
   const audio = getContext()
   if (!audio) return
   try {
@@ -48,9 +50,39 @@ export function playStartChime(): void {
       void audio.resume()
     }
     const now = audio.currentTime
-    tone(audio, 659.25, now, 0.14) // E5
-    tone(audio, 987.77, now + 0.11, 0.2) // B5
+    for (const n of notes) {
+      tone(audio, n.freq, now + n.offset, n.duration)
+    }
   } catch {
-    // Audio is a nice-to-have — never let it break Start.
+    // Audio is a nice-to-have — never let it break a recorder action.
   }
+}
+
+// Rising two-tone: "tracking is live."
+export function playStartChime(): void {
+  playChime([
+    { freq: 659.25, offset: 0, duration: 0.14 }, // E5
+    { freq: 987.77, offset: 0.11, duration: 0.2 }, // B5
+  ])
+}
+
+// Single soft mid note: "paused, hold."
+export function playPauseChime(): void {
+  playChime([{ freq: 523.25, offset: 0, duration: 0.16 }]) // C5
+}
+
+// Rising pair echoing Start, but softer: "back on."
+export function playResumeChime(): void {
+  playChime([
+    { freq: 523.25, offset: 0, duration: 0.1 }, // C5
+    { freq: 783.99, offset: 0.08, duration: 0.16 }, // G5
+  ])
+}
+
+// Descending pair: "ride saved."
+export function playStopChime(): void {
+  playChime([
+    { freq: 783.99, offset: 0, duration: 0.14 }, // G5
+    { freq: 392.0, offset: 0.12, duration: 0.22 }, // G4
+  ])
 }

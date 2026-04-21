@@ -38,18 +38,19 @@ The living map of what exists in this repo and where. **Update this file every t
 
 ## GPS recorder
 
-- `src/features/platform/types.ts` — `Platform` interface; typed `GeoError` with kind discriminator; native-vs-web flag (`isNative`); auth helpers (`openAuthUrl`, `closeAuthBrowser`, `onAppUrl`)
+- `src/features/platform/types.ts` — `Platform` interface; typed `GeoError` with kind discriminator; native-vs-web flag (`isNative`); auth helpers (`openAuthUrl`, `closeAuthBrowser`, `onAppUrl`); `hapticTap(style)` where style is `'light' | 'medium' | 'heavy'`
 - `src/features/platform/index.ts` — runtime selection (web vs Capacitor)
-- `src/features/platform/web.ts` — web implementation; watchPosition, wake lock, share; includes `checkPermissionState()`; auth helpers are no-ops / full-page navigation
-- `src/features/platform/capacitor.ts` — Capacitor implementation; uses `@capacitor-community/background-geolocation` for foreground-service GPS on Android + UIBackgroundModes on iOS; `@capacitor/browser` + `@capacitor/app` for the OAuth deep-link round-trip
+- `src/features/platform/web.ts` — web implementation; watchPosition, wake lock, share; includes `checkPermissionState()`; auth helpers are no-ops / full-page navigation; `hapticTap` maps styles onto the Vibration API, silent on iOS Safari
+- `src/features/platform/web.test.ts` — covers the `hapticTap` light/heavy mapping, silent no-op when `navigator.vibrate` is absent, and swallowing a thrown vibrate
+- `src/features/platform/capacitor.ts` — Capacitor implementation; uses `@capacitor-community/background-geolocation` for foreground-service GPS on Android + UIBackgroundModes on iOS; `@capacitor/browser` + `@capacitor/app` for the OAuth deep-link round-trip; `@capacitor/haptics` for Taptic Engine / vibrator pulses via `hapticTap`
 - `src/features/recorder/geolocation.ts` — `navigator.geolocation.watchPosition` wrapper; propagates typed PERMISSION_DENIED error
 - `src/features/recorder/smoothing.ts` — `shouldAcceptPoint()`; rejects noisy/parked GPS fixes
 - `src/features/recorder/smoothing.test.ts` — unit tests for accept/reject rules
 - `src/features/recorder/wakeLock.ts` — web Wake Lock API wrapper
 - `src/features/recorder/useRecorder.ts` — Zustand store; start/pause/resume/stop/reset
-- `src/features/recorder/sound.ts` — `playStartChime()`; two-tone Web Audio chime triggered from the Start-button click so the rider gets an audible "tracking is live" confirmation. Synthesized (no asset), silent when AudioContext is unavailable
-- `src/features/recorder/sound.test.ts` — no-op-when-unavailable + schedules two oscillators on a fake AudioContext
-- `src/components/RecordScreen.tsx` — pre-ride form (ride name + bike dropdown sourced from Dexie `bikes` table), live stats + map during recording; shows `LocationBlockedCard` on permission denial. The live view enters with an `animate-launch` wrapper + one-shot `animate-launch-burst` gradient flare (defined in `tailwind.config.js`) so the transition out of the idle screen reads as deliberate rather than abrupt
+- `src/features/recorder/sound.ts` — `playStartChime()` / `playPauseChime()` / `playResumeChime()` / `playStopChime()`; synthesized Web Audio chimes fired from the recorder button handlers so each state change gets a distinct audible confirmation. Silent when AudioContext is unavailable
+- `src/features/recorder/sound.test.ts` — no-op-when-unavailable + oscillator-count per chime on a fake AudioContext (module is reset between tests so the cached singleton doesn't leak)
+- `src/components/RecordScreen.tsx` — pre-ride form (ride name + bike dropdown sourced from Dexie `bikes` table), live stats + map during recording; shows `LocationBlockedCard` on permission denial. The live view enters with an `animate-launch` wrapper + one-shot `animate-launch-burst` gradient flare (defined in `tailwind.config.js`) so the transition out of the idle screen reads as deliberate rather than abrupt. Start/pause/resume/stop each fire a distinct chime + `platform.hapticTap(...)` buzz for tactile feedback on devices that support it
 - `src/components/LocationBlockedCard.tsx` — shown when GPS is denied; iOS-specific instructions + retry button
 - `src/components/LocationBlockedCard.test.tsx` — renders iOS copy when UA is iPhone Safari
 - `src/components/LiveStats.tsx` — live distance/duration/speed readout during recording

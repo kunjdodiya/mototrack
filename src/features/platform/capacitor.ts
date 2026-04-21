@@ -3,9 +3,11 @@ import { Share } from '@capacitor/share'
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'
 import { Browser } from '@capacitor/browser'
 import { App, type URLOpenListenerEvent } from '@capacitor/app'
+import { Haptics, ImpactStyle } from '@capacitor/haptics'
 import { registerPlugin } from '@capacitor/core'
 import type { BackgroundGeolocationPlugin } from '@capacitor-community/background-geolocation'
 import type {
+  HapticStyle,
   Platform,
   GeoError,
   PermissionState,
@@ -13,6 +15,12 @@ import type {
   ShareResult,
 } from './types'
 import type { TrackPoint } from '../../types/ride'
+
+const IMPACT_STYLE: Record<HapticStyle, ImpactStyle> = {
+  light: ImpactStyle.Light,
+  medium: ImpactStyle.Medium,
+  heavy: ImpactStyle.Heavy,
+}
 
 const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>(
   'BackgroundGeolocation',
@@ -157,6 +165,12 @@ export const capacitorPlatform: Platform = {
     return () => {
       void sub.then((s) => s.remove())
     }
+  },
+
+  hapticTap(style: HapticStyle = 'medium') {
+    // Fire-and-forget Taptic Engine (iOS) / vibrator (Android) pulse.
+    // Errors are swallowed because haptics are decorative, not functional.
+    void Haptics.impact({ style: IMPACT_STYLE[style] }).catch(() => {})
   },
 
   async sharePng(args: ShareArgs): Promise<ShareResult> {

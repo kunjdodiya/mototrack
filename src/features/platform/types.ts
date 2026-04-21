@@ -24,6 +24,8 @@ export type ShareArgs = {
 
 export type ShareResult = 'shared' | 'downloaded'
 
+export type HapticStyle = 'light' | 'medium' | 'heavy'
+
 /**
  * The platform contract. Everything that differs between mobile web and the
  * Capacitor native shell goes through this interface. Feature code must never
@@ -68,4 +70,11 @@ export interface Platform {
    *  - Native: forwards Capacitor's `appUrlOpen` events.
    */
   onAppUrl(handler: (url: string) => void): () => void
+
+  /**
+   * Fire a short haptic buzz. iOS native uses the Taptic Engine via the
+   * Capacitor Haptics plugin; Android native + Chrome Android use the
+   * Vibration API. Silent on platforms without either (iOS Safari, desktop).
+   */
+  hapticTap(style?: HapticStyle): void
 }
