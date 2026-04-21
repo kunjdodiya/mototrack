@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { signInWithGoogle } from '../features/auth/session'
 
 export default function SignInScreen() {
@@ -47,6 +48,13 @@ export default function SignInScreen() {
         We use your Google account only to save your rides to your personal
         cloud. No email, no spam.
       </p>
+
+      <Link
+        to="/privacy"
+        className="text-xs text-neutral-500 underline hover:text-neutral-300"
+      >
+        Privacy Policy
+      </Link>
     </div>
   )
 }

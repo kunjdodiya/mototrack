@@ -5,10 +5,15 @@ import HistoryList from './components/HistoryList'
 import RideSummary from './components/RideSummary'
 import ProfileScreen from './components/ProfileScreen'
 import AuthCallback from './components/AuthCallback'
+import PrivacyScreen from './components/PrivacyScreen'
 import AuthGate from './features/auth/AuthGate'
 
 export const router = createBrowserRouter([
   { path: '/auth/callback', element: <AuthCallback /> },
+  // Privacy lives OUTSIDE the AuthGate: store reviewers and the App Store /
+  // Play Store listings link directly to it and must reach it without a
+  // Google sign-in.
+  { path: '/privacy', element: <PrivacyScreen /> },
   {
     path: '/',
     element: (

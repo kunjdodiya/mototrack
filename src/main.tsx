@@ -5,6 +5,7 @@ import './index.css'
 import 'leaflet/dist/leaflet.css'
 import { router } from './router'
 import { registerServiceWorker } from './features/pwa/registerSW'
+import { startAuthDeepLinkListener } from './features/auth/deepLink'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -13,3 +14,4 @@ createRoot(document.getElementById('root')!).render(
 )
 
 registerServiceWorker()
+startAuthDeepLinkListener()

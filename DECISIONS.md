@@ -93,3 +93,35 @@ Do not rewrite old entries. If a decision is reversed, add a new entry that supe
 **Decision:** Load Inter 400/500/600/700/800 from Google Fonts in `index.html` with `preconnect` on both `fonts.googleapis.com` and `fonts.gstatic.com`. Keep the system stack as fallback so first paint never waits on the CDN. Tailwind + `body` CSS + `ShareCard` inline style all declare Inter first.
 
 **Consequences:** The PWA service worker caches font files after the first load — subsequent visits are offline-capable. html-to-image picks up the computed font-family on the off-screen poster node, so the PNG export renders Inter correctly. If Google Fonts becomes an availability concern the swap is one `<link>` edit away (or move to `@fontsource-variable/inter` for self-hosting).
+
+## 2026-04-21 — Native Google Sign-In via PKCE + @capacitor/browser deep link
+
+**Context:** Web OAuth redirect flow worked in the PWA but breaks inside the Capacitor WebView: Supabase tries to navigate the WebView to accounts.google.com, which loses the in-app back button, breaks the system password manager, and never returns to the app. AGENTS.md flagged "Native Google Sign-In flow for Capacitor iOS/Android" as out-of-scope, but it's the gating dependency for shipping the apps.
+
+**Decision:** Switch the Supabase client to `flowType: 'pkce'`. On native, `signInWithGoogle()` calls `signInWithOAuth({ skipBrowserRedirect: true })` to receive the OAuth URL, opens it in `@capacitor/browser` (SFSafariViewController on iOS, Chrome Custom Tab on Android — these share cookies with the system browser, so a returning user is one tap), then waits for the deep-link return on `com.kunjdodiya.mototrack://auth/callback` via `@capacitor/app`'s `appUrlOpen` event. The deep-link handler extracts the `code` query/fragment param and calls `supabase.auth.exchangeCodeForSession(code)`. All `@capacitor/*` imports stay quarantined in `src/features/platform/capacitor.ts` per the existing platform-adapter rule — the auth code path goes through three new methods on the `Platform` interface (`openAuthUrl`, `closeAuthBrowser`, `onAppUrl`).
+
+**Consequences:** One auth code path covers web + iOS + Android. PKCE works equally well on both surfaces (web uses `detectSessionInUrl`, native uses the explicit exchange). Two new native config bits are now part of the contract and must stay in sync with `NATIVE_AUTH_REDIRECT`: iOS `CFBundleURLTypes` and Android `<intent-filter>` on MainActivity. The Supabase project's redirect-URL allowlist and the Google OAuth client's authorized-redirect-URIs both need `com.kunjdodiya.mototrack://auth/callback` added in addition to the existing web URL — documented in `store/account-setup.md` step 6. PKCE requires `localStorage` to persist the code verifier between `signInWithOAuth` and `exchangeCodeForSession`; Capacitor's WebView provides this, so no extra storage shim was needed.
+
+## 2026-04-21 — Background GPS via @capacitor-community/background-geolocation
+
+**Context:** The default `@capacitor/geolocation` plugin uses `watchPosition`, which Android kills within seconds of the screen locking — fatal for a ride tracker, since putting the phone in a tank bag with the screen off is the normal mode of use. The fix on Android is a foreground service with a persistent notification; iOS already keeps `watchPosition` alive with `UIBackgroundModes=[location]`, but only if the user grants "Always" permission.
+
+**Decision:** Add `@capacitor-community/background-geolocation` (Capacitor 8 compatible at v1.2.x). Replace the `Geolocation.watchPosition` call inside `capacitorPlatform.watchPosition` with `BackgroundGeolocation.addWatcher`, passing `backgroundMessage` + `backgroundTitle` (which is what flips the watcher into foreground-service mode on Android). Set `android.useLegacyBridge: true` in `capacitor.config.ts` per the plugin's documented requirement to keep updates flowing past the 5-minute mark. Keep the basic `@capacitor/geolocation` plugin around only for `checkPermissions()` since the permission state surface is identical between the two and there's no point reaching for the bigger plugin twice.
+
+**Consequences:** Android shows a persistent "MotoTrack — recording ride" notification while a watcher is active; tapping it returns to the app. This satisfies Android 14's foreground-service-location runtime requirement, and the existing `FOREGROUND_SERVICE_LOCATION` + `POST_NOTIFICATIONS` permissions in `AndroidManifest.xml` are sufficient. iOS unchanged behaviour-wise but goes through the same plugin so the call site stays single-codepath. Bundle size on native goes up by ~80 KB; web bundle is unaffected (Vite tree-shakes `@capacitor-community/*` when `Capacitor.isNativePlatform()` is false at build time? Actually no, it doesn't — but the import only resolves at runtime via `registerPlugin`, and the JS surface is tiny).
+
+## 2026-04-21 — Privacy policy lives at /privacy, outside the AuthGate
+
+**Context:** Both App Store Connect and Play Console require a public, hosted privacy policy URL. The reviewer must be able to reach it without signing in, and so must any user reading the store listing.
+
+**Decision:** Add `src/components/PrivacyScreen.tsx` rendered at `/privacy` as a top-level route OUTSIDE the `<AuthGate>` wrapper in `src/router.tsx`. Link to it from `SignInScreen.tsx` so even a brand-new visitor on the landing page can see it. Same URL — `https://mototrack.pages.dev/privacy` — is what we hand to both stores.
+
+**Consequences:** One source of truth for the policy text (`PrivacyScreen.tsx`), versioned with the rest of the code, edits ship via the existing Cloudflare Pages auto-deploy. If the policy needs to change after launch we update the React component, deploy, and update the `LAST_UPDATED` constant — no separate static-site or external PaaS to maintain.
+
+## 2026-04-21 — Native icons + splash generated from one SVG via @capacitor/assets
+
+**Context:** Both stores require a 512×512 (Play) / 1024×1024 (Apple) PNG icon plus a per-density set for every platform target. Hand-curating those 100+ files is a maintenance nightmare and easy to get wrong (Android adaptive icons in particular have a foreground/background split that needs the right safe-area).
+
+**Decision:** Add `scripts/generate-native-assets.mjs` (run via `npm run native:assets`) that uses `sharp` to rasterise `public/icon-512.svg` to a few canonical 1024×1024 / 2732×2732 PNGs in `assets/`, then shells out to `npx @capacitor/assets generate` with the brand-dark `#0a0a0a` background. The output PNGs are committed under `ios/App/App/Assets.xcassets/` and `android/app/src/main/res/`.
+
+**Consequences:** The brand changes at one source-of-truth file (`public/icon-512.svg`). Re-running the script regenerates every native + PWA size. The script is idempotent — checking the diff after a run shows whether the source art actually changed. `sharp` is added as a dev-only dependency (~15 MB), worth it for the avoidance of a separate design-tool round-trip per icon update.

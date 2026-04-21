@@ -117,9 +117,21 @@ These are **filed as separate tasks** and have improvement chips:
 
 - **Group Rides** — create ride, share invite link, see participants, group history. Dedicated feature with its own schema.
 - **Ride analytics on history** — charts + weekly/monthly totals + personal records.
-- **Native Google Sign-In flow for Capacitor iOS/Android** — today's implementation is web OAuth only. Native needs `@capacitor/browser` + deep-link handling.
 
 If the owner asks for any of these, resume that chip's session rather than starting fresh.
+
+## Shipping to the App Store + Play Store
+
+Native iOS/Android shipping has its own kit at [`store/`](./store/):
+- `store/account-setup.md` — one-time owner tasks (Apple Dev enrollment, Play Console enrollment, keystore generation, Supabase + Google Cloud redirect-URL config)
+- `store/apple.md` and `store/google.md` — copy-paste listing fields
+- `store/screenshots.md` — required sizes
+- `store/shared-description.md` — single source of truth for the long description
+
+Build locally:
+- `npm run cap:ios` → opens Xcode (Archive → Distribute App)
+- `npm run cap:android` → opens Android Studio (Generate Signed App Bundle)
+- `npm run native:assets` → re-runs the icon+splash generator if `public/icon-512.svg` changes
 
 ## Self-validation
 

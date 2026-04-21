@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 
 let currentSession: Session | null = null
@@ -50,9 +51,11 @@ describe('AuthGate', () => {
 
   it('shows the sign-in screen when no session is present', async () => {
     render(
-      <AuthGate>
-        <div>app content</div>
-      </AuthGate>,
+      <MemoryRouter>
+        <AuthGate>
+          <div>app content</div>
+        </AuthGate>
+      </MemoryRouter>,
     )
     await waitFor(() => {
       expect(screen.getByText(/Continue with Google/i)).toBeInTheDocument()
@@ -63,9 +66,11 @@ describe('AuthGate', () => {
   it('renders children once a session exists', async () => {
     currentSession = fakeSession('user-1')
     render(
-      <AuthGate>
-        <div>app content</div>
-      </AuthGate>,
+      <MemoryRouter>
+        <AuthGate>
+          <div>app content</div>
+        </AuthGate>
+      </MemoryRouter>,
     )
     await waitFor(() => {
       expect(screen.getByText('app content')).toBeInTheDocument()

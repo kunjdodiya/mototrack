@@ -15,5 +15,10 @@ export const supabase: SupabaseClient = createClient(url, anonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    // PKCE on both web and native: web auto-detects the ?code= on
+    // /auth/callback; native receives the deep link, extracts the code, and
+    // calls supabase.auth.exchangeCodeForSession() manually
+    // (see src/features/auth/deepLink.ts).
+    flowType: 'pkce',
   },
 })

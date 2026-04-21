@@ -22,6 +22,12 @@ const config: CapacitorConfig = {
     // UIBackgroundModes: [location] — Capacitor won't add it automatically.
     contentInset: 'always',
   },
+  android: {
+    // Required by @capacitor-community/background-geolocation: without the
+    // legacy bridge, Android halts location updates ~5 min after backgrounding.
+    // https://github.com/capacitor-community/background-geolocation/issues/89
+    useLegacyBridge: true,
+  },
 }
 
 export default config

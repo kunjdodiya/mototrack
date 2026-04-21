@@ -19,24 +19,29 @@ The living map of what exists in this repo and where. **Update this file every t
 - `tsconfig*.json` — TypeScript strict config
 - `index.html` — Vite entry HTML
 - `scripts/agents-check.mjs` — canonical-docs drift validator
+- `scripts/generate-native-assets.mjs` — rasterises `public/icon-512.svg` into the iOS/Android/PWA icon + splash sets via `@capacitor/assets`; run with `npm run native:assets`
 - `.github/workflows/deploy.yml` — auto-deploy to Cloudflare Pages on push to `main`; runs lint + tests + build + `wrangler pages deploy`
+- `store/` — App Store + Play Store submission kit (listing copy, screenshot specs, account-setup walkthrough)
 
 ## Auth — Google Sign-In (required)
 
-- `src/features/auth/supabase.ts` — Supabase client singleton; throws if env vars missing (auth is required)
-- `src/features/auth/session.ts` — `signInWithGoogle()`, `signOut()`, `getSession()`, `onAuthChange()`
+- `src/features/auth/supabase.ts` — Supabase client singleton; throws if env vars missing (auth is required); PKCE flow for native parity
+- `src/features/auth/session.ts` — `signInWithGoogle()`, `signOut()`, `getSession()`, `onAuthChange()`; branches on `platform.isNative` to use the deep-link redirect on iOS/Android, web redirect on PWA. Exports `NATIVE_AUTH_REDIRECT` (`com.kunjdodiya.mototrack://auth/callback`)
+- `src/features/auth/session.test.ts` — covers the web/native branching of `signInWithGoogle()`
+- `src/features/auth/deepLink.ts` — `handleAuthDeepLink(url)` exchanges a Supabase PKCE `code` for a session and dismisses the in-app browser; `startAuthDeepLinkListener()` registers the platform's `appUrlOpen` subscription
+- `src/features/auth/deepLink.test.ts` — query/fragment code extraction, error-redirect handling, browser-close on success/failure, listener forwarding
 - `src/features/auth/AuthGate.tsx` — React component; renders children only when authenticated, else renders `SignInScreen`; triggers sync on first sign-in
 - `src/features/auth/AuthGate.test.tsx` — renders sign-in when no session, children when session present; mocks Supabase
-- `src/components/SignInScreen.tsx` — centered logo + "Continue with Google" button
+- `src/components/SignInScreen.tsx` — centered logo + "Continue with Google" button + privacy-policy link
 - `src/components/SignOutButton.tsx` — header button; calls `signOut()`
 - `src/components/AuthCallback.tsx` — `/auth/callback` route; navigates home once Supabase processes the OAuth redirect
 
 ## GPS recorder
 
-- `src/features/platform/types.ts` — `Platform` interface; typed `GeoError` with kind discriminator
+- `src/features/platform/types.ts` — `Platform` interface; typed `GeoError` with kind discriminator; native-vs-web flag (`isNative`); auth helpers (`openAuthUrl`, `closeAuthBrowser`, `onAppUrl`)
 - `src/features/platform/index.ts` — runtime selection (web vs Capacitor)
-- `src/features/platform/web.ts` — web implementation; watchPosition, wake lock, share; includes `checkPermissionState()`
-- `src/features/platform/capacitor.ts` — Capacitor implementation
+- `src/features/platform/web.ts` — web implementation; watchPosition, wake lock, share; includes `checkPermissionState()`; auth helpers are no-ops / full-page navigation
+- `src/features/platform/capacitor.ts` — Capacitor implementation; uses `@capacitor-community/background-geolocation` for foreground-service GPS on Android + UIBackgroundModes on iOS; `@capacitor/browser` + `@capacitor/app` for the OAuth deep-link round-trip
 - `src/features/recorder/geolocation.ts` — `navigator.geolocation.watchPosition` wrapper; propagates typed PERMISSION_DENIED error
 - `src/features/recorder/smoothing.ts` — `shouldAcceptPoint()`; rejects noisy/parked GPS fixes
 - `src/features/recorder/smoothing.test.ts` — unit tests for accept/reject rules
@@ -100,8 +105,10 @@ The living map of what exists in this repo and where. **Update this file every t
 
 ## Routing + shell
 
-- `src/main.tsx` — React root; mounts router; registers service worker
-- `src/router.tsx` — routes: `/`, `/history`, `/ride/:id`, `/profile`, `/auth/callback`; all app routes wrapped in `<AuthGate>`
+- `src/main.tsx` — React root; mounts router; registers service worker; starts the auth deep-link listener (`startAuthDeepLinkListener()`)
+- `src/router.tsx` — routes: `/`, `/history`, `/ride/:id`, `/profile`, `/auth/callback`, `/privacy`; app routes wrapped in `<AuthGate>`; `/privacy` is intentionally outside the gate so store reviewers can read it without signing in
+- `src/components/PrivacyScreen.tsx` — the public privacy policy linked from store listings + the sign-in screen
+- `src/components/PrivacyScreen.test.tsx` — render smoke test
 - `src/App.tsx` — layout: header (logo + Record/History/Profile nav + sign-out) + nested `<Outlet />`
 - `src/index.css` — Tailwind entry + global styles; Inter as the primary font family
 - `src/test/setup.ts` — Vitest setup; imports `@testing-library/jest-dom`
@@ -115,8 +122,10 @@ The living map of what exists in this repo and where. **Update this file every t
 
 - `ios/` — Xcode project (Capacitor)
 - `android/` — Android Studio project (Capacitor)
-- `ios/App/App/Info.plist` — privacy strings for location, background mode
-- `android/app/src/main/AndroidManifest.xml` — location + foreground-service permissions
+- `ios/App/App/Info.plist` — privacy strings for location, `UIBackgroundModes=[location]`, `CFBundleURLTypes` for the `com.kunjdodiya.mototrack://` OAuth deep link
+- `android/app/src/main/AndroidManifest.xml` — location + foreground-service-location + POST_NOTIFICATIONS permissions, plus the deep-link intent-filter on MainActivity
+- `assets/` — generated 1024×1024 source PNGs that feed `@capacitor/assets`; produced by `scripts/generate-native-assets.mjs`. Output is committed under `ios/App/App/Assets.xcassets/` and `android/app/src/main/res/`
+- `capacitor.config.ts` — `android.useLegacyBridge: true` is required by the background-geolocation plugin to keep updates flowing past the 5-minute mark
 
 ## Types
 

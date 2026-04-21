@@ -1,6 +1,10 @@
 import { Geolocation } from '@capacitor/geolocation'
 import { Share } from '@capacitor/share'
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'
+import { Browser } from '@capacitor/browser'
+import { App, type URLOpenListenerEvent } from '@capacitor/app'
+import { registerPlugin } from '@capacitor/core'
+import type { BackgroundGeolocationPlugin } from '@capacitor-community/background-geolocation'
 import type {
   Platform,
   GeoError,
@@ -10,78 +14,87 @@ import type {
 } from './types'
 import type { TrackPoint } from '../../types/ride'
 
+const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>(
+  'BackgroundGeolocation',
+)
+
 /**
  * Native (Capacitor) implementation of the Platform contract. Selected at
  * runtime by ./index.ts when running inside a Capacitor shell — the same
  * React bundle that ships to mototrack.pages.dev also works wrapped as a
  * native iOS/Android app.
  *
- * Enabling true background GPS requires ONE-TIME native config (not code):
+ * Background GPS uses @capacitor-community/background-geolocation, which on
+ * Android runs a foreground service (with a persistent notification — see
+ * `backgroundMessage` below) and on iOS leans on the UIBackgroundModes entry.
+ *
+ * Required native config (already in repo):
  *
  *   iOS  → ios/App/App/Info.plist:
  *            <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
- *            <string>MotoTrack records your ride route while you're riding.</string>
  *            <key>NSLocationWhenInUseUsageDescription</key>
- *            <string>MotoTrack records your ride route while you're riding.</string>
  *            <key>UIBackgroundModes</key><array><string>location</string></array>
+ *            <key>CFBundleURLTypes</key>... (for the OAuth deep link)
  *
  *   Android → android/app/src/main/AndroidManifest.xml:
- *            <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
- *            <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
- *            <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+ *            ACCESS_FINE_LOCATION, ACCESS_BACKGROUND_LOCATION,
+ *            FOREGROUND_SERVICE, FOREGROUND_SERVICE_LOCATION,
+ *            POST_NOTIFICATIONS, plus an intent-filter on the deep-link scheme.
  */
 export const capacitorPlatform: Platform = {
+  isNative: true,
+
   watchPosition(
     onPoint: (p: TrackPoint) => void,
     onError: (e: GeoError) => void,
   ): () => void {
-    let watchId: string | null = null
+    let watcherId: string | null = null
     let cancelled = false
 
     const start = async () => {
       try {
-        // Request permission up-front — Capacitor's plugin prompts the user
-        // if we don't already have it.
-        const perm = await Geolocation.requestPermissions({
-          permissions: ['location'],
-        })
-        if (perm.location === 'denied') {
-          onError({
-            kind: 'permission-denied',
-            code: 1,
-            message: 'Location permission denied',
-          })
-          return
-        }
-
-        const id = await Geolocation.watchPosition(
-          { enableHighAccuracy: true, timeout: 15_000 },
-          (pos, err) => {
-            if (err) {
+        watcherId = await BackgroundGeolocation.addWatcher(
+          {
+            // Defining `backgroundMessage` is what flips this watcher into
+            // foreground-service mode on Android — without it, the OS kills
+            // GPS updates within seconds of the screen locking. On iOS, the
+            // UIBackgroundModes=[location] entitlement keeps it alive while
+            // "Always" permission is granted.
+            backgroundMessage:
+              'Recording your ride. Tap to return to MotoTrack.',
+            backgroundTitle: 'MotoTrack — recording ride',
+            requestPermissions: true,
+            stale: false,
+            distanceFilter: 0,
+          },
+          (location, error) => {
+            if (error) {
               onError({
-                kind: 'unknown',
+                kind:
+                  error.code === 'NOT_AUTHORIZED'
+                    ? 'permission-denied'
+                    : 'unknown',
                 code: 0,
-                message: err.message ?? 'geolocation error',
+                message: error.message ?? String(error.code ?? 'geo error'),
               })
               return
             }
-            if (!pos) return
+            if (!location) return
             onPoint({
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude,
-              ts: pos.timestamp,
-              speed: pos.coords.speed ?? null,
-              alt: pos.coords.altitude ?? null,
-              acc: pos.coords.accuracy,
+              lat: location.latitude,
+              lng: location.longitude,
+              ts: location.time ?? Date.now(),
+              speed: location.speed ?? null,
+              alt: location.altitude ?? null,
+              acc: location.accuracy ?? 0,
             })
           },
         )
-        if (cancelled) {
-          // stop() was called before watch registration resolved.
-          await Geolocation.clearWatch({ id })
-          return
+        if (cancelled && watcherId) {
+          // stop() was called before the watcher registration resolved.
+          await BackgroundGeolocation.removeWatcher({ id: watcherId })
+          watcherId = null
         }
-        watchId = id
       } catch (err) {
         onError({
           kind: 'unknown',
@@ -95,9 +108,9 @@ export const capacitorPlatform: Platform = {
 
     return () => {
       cancelled = true
-      if (watchId) {
-        void Geolocation.clearWatch({ id: watchId })
-        watchId = null
+      if (watcherId) {
+        void BackgroundGeolocation.removeWatcher({ id: watcherId })
+        watcherId = null
       }
     }
   },
@@ -119,6 +132,31 @@ export const capacitorPlatform: Platform = {
   // needed. Return a no-op releaser.
   async requestWakeLock() {
     return () => {}
+  },
+
+  async openAuthUrl(url: string) {
+    // SFSafariViewController on iOS / Chrome Custom Tab on Android. Shares
+    // cookies with the system browser, so a returning user is usually one
+    // tap (already signed in to Google) instead of typing a password.
+    await Browser.open({ url, presentationStyle: 'popover' })
+  },
+
+  async closeAuthBrowser() {
+    try {
+      await Browser.close()
+    } catch {
+      // The browser may already be closed (user dismissed it manually,
+      // or the deep-link return auto-dismissed it). That's fine.
+    }
+  },
+
+  onAppUrl(handler: (url: string) => void) {
+    const sub = App.addListener('appUrlOpen', (event: URLOpenListenerEvent) => {
+      handler(event.url)
+    })
+    return () => {
+      void sub.then((s) => s.remove())
+    }
   },
 
   async sharePng(args: ShareArgs): Promise<ShareResult> {
