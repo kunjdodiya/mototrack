@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { Ride } from '../types/ride'
 import { getRide, deleteRide } from '../features/storage/rides'
@@ -13,7 +13,6 @@ export default function RideSummary() {
   const [ride, setRide] = useState<Ride | null | undefined>(undefined)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
-  const posterRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!id) return
@@ -61,20 +60,16 @@ export default function RideSummary() {
     window.location.href = '/history'
   }
 
-  const handleExport = async () => {
-    if (!posterRef.current) return
+  const handleShare = async () => {
     setExporting(true)
     setExportError(null)
     try {
-      const blob = await renderSharePng({
-        ride,
-        cardNode: posterRef.current,
-      })
+      const blob = await renderSharePng({ ride })
       await platform.sharePng({
         blob,
         filename: `mototrack-${ride.id.slice(0, 8)}.png`,
         title: 'MotoTrack ride',
-        text: ride.name ?? 'My ride',
+        text: ride.name ?? 'My ride on MotoTrack',
       })
     } catch (err: unknown) {
       setExportError(err instanceof Error ? err.message : String(err))
@@ -115,11 +110,11 @@ export default function RideSummary() {
       <div className="grid animate-fade-up grid-cols-2 gap-3" style={{ animationDelay: '120ms' }}>
         <button
           type="button"
-          onClick={() => void handleExport()}
+          onClick={() => void handleShare()}
           disabled={exporting}
           className="rounded-2xl bg-brand-gradient py-4 text-base font-semibold text-white shadow-glow-orange transition active:scale-[0.98] disabled:opacity-60"
         >
-          {exporting ? 'Generating…' : 'Export PNG'}
+          {exporting ? 'Generating…' : 'Share to Story'}
         </button>
         <button
           type="button"
@@ -129,6 +124,10 @@ export default function RideSummary() {
           Delete
         </button>
       </div>
+
+      <p className="-mt-2 text-center text-xs text-neutral-500">
+        Exports a 1080×1920 Instagram Story — pick Instagram, WhatsApp, or any other app from your share sheet.
+      </p>
 
       {exportError && (
         <p className="text-center text-sm text-red-400">Export failed: {exportError}</p>
@@ -140,21 +139,6 @@ export default function RideSummary() {
       >
         ← Back to history
       </Link>
-
-      {/* Off-screen poster-sized card used only during PNG export. */}
-      <div
-        style={{
-          position: 'absolute',
-          left: -99999,
-          top: 0,
-          pointerEvents: 'none',
-        }}
-        aria-hidden="true"
-      >
-        <div ref={posterRef}>
-          <ShareCard ride={ride} poster />
-        </div>
-      </div>
     </div>
   )
 }

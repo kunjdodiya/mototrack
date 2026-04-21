@@ -3,8 +3,6 @@ import { haversine } from '../features/stats/haversine'
 
 type Props = {
   track: TrackPoint[]
-  /** Poster mode: bigger fonts/strokes for 1080-wide PNG rendering. */
-  poster?: boolean
   className?: string
 }
 
@@ -37,12 +35,12 @@ function smooth(values: number[]): number[] {
   })
 }
 
-export default function SpeedGraph({ track, poster = false, className }: Props) {
-  const W = poster ? 1000 : 600
-  const H = poster ? 320 : 180
-  const PAD_X = poster ? 40 : 24
-  const PAD_TOP = poster ? 28 : 16
-  const PAD_BOTTOM = poster ? 44 : 28
+export default function SpeedGraph({ track, className }: Props) {
+  const W = 600
+  const H = 180
+  const PAD_X = 24
+  const PAD_TOP = 16
+  const PAD_BOTTOM = 28
 
   const samples = smooth(sampleSpeeds(track))
 
@@ -50,7 +48,7 @@ export default function SpeedGraph({ track, poster = false, className }: Props) 
     return (
       <div
         className={`flex items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/60 text-sm text-neutral-500 ${className ?? ''}`}
-        style={{ width: poster ? W : undefined, height: H }}
+        style={{ height: H }}
       >
         Not enough data for a speed graph.
       </div>
@@ -81,15 +79,13 @@ export default function SpeedGraph({ track, poster = false, className }: Props) 
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      width={poster ? W : undefined}
-      height={poster ? H : undefined}
       preserveAspectRatio="none"
       className={className}
       style={{
         background: '#0a0a0a',
-        borderRadius: poster ? 0 : 12,
+        borderRadius: 12,
         display: 'block',
-        width: poster ? `${W}px` : '100%',
+        width: '100%',
       }}
     >
       {yTicks.map((k) => {
@@ -100,7 +96,7 @@ export default function SpeedGraph({ track, poster = false, className }: Props) 
             <text
               x={PAD_X - 8}
               y={y + 4}
-              fontSize={poster ? 16 : 10}
+              fontSize={10}
               fill={textColor}
               textAnchor="end"
               fontFamily="Inter, -apple-system, sans-serif"
@@ -113,8 +109,8 @@ export default function SpeedGraph({ track, poster = false, className }: Props) 
       })}
       <text
         x={PAD_X}
-        y={H - PAD_BOTTOM + (poster ? 28 : 18)}
-        fontSize={poster ? 16 : 10}
+        y={H - PAD_BOTTOM + 18}
+        fontSize={10}
         fill={textColor}
         fontFamily="Inter, -apple-system, sans-serif"
         fontWeight={500}
@@ -122,7 +118,7 @@ export default function SpeedGraph({ track, poster = false, className }: Props) 
         Speed (km/h) over distance
       </text>
       <path d={areaPath} fill="rgba(255,77,0,0.18)" />
-      <path d={linePath} fill="none" stroke="#ff4d00" strokeWidth={poster ? 3.5 : 2} strokeLinejoin="round" strokeLinecap="round" />
+      <path d={linePath} fill="none" stroke="#ff4d00" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   )
 }

@@ -115,10 +115,13 @@ To deploy manually from your Mac instead, `npm run deploy` still works
 - **Map:** Leaflet + OpenStreetMap tiles (free, no API key).
 - **Local storage:** Dexie (IndexedDB) — `src/features/storage/`.
 - **State:** Zustand store for the active recording session.
-- **PNG share image:** custom offscreen-canvas compositor in
-  `src/features/share/exportPng.ts`. Fetches OSM tiles via
-  `fetch → blob → createImageBitmap` (CORS-clean), projects route points via
-  Web Mercator, composites the stats card rendered by html-to-image.
+- **PNG share image:** pure-canvas compositor in
+  `src/features/share/exportPng.ts` that outputs a 1080×1920 PNG sized for
+  Instagram Stories. Fetches OSM tiles via `fetch → blob → createImageBitmap`
+  (CORS-clean), projects route points via Web Mercator, then paints the
+  MotoTrack logo, ride title, bike chip, and stat tiles with brand-gradient
+  accents directly onto the canvas — no DOM rasterisation. The native
+  share sheet routes the PNG to Instagram, WhatsApp, X, etc.
 - **Cloud sync:** Supabase with anonymous auth + RLS scoped by `auth.uid()`.
 - **Platform adapter:** `src/features/platform/` — web impl today, Capacitor
   native swappable in v2 via `capacitor.ts` (currently a stub with migration

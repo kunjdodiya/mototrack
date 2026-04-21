@@ -81,7 +81,7 @@ The living map of what exists in this repo and where. **Update this file every t
 ## History + Ride detail
 
 - `src/components/HistoryList.tsx` — newest-first ride list; live-queried via dexie-react-hooks; shows ride name + bike chip when present
-- `src/components/RideSummary.tsx` — detail view styled to match the rest of the app (uppercase overline + ride title, rounded-2xl map card with fade-up animation, ShareCard, gradient Export-PNG button, border-white Delete). Loading and not-found states reuse the same header treatment
+- `src/components/RideSummary.tsx` — detail view styled to match the rest of the app (uppercase overline + ride title, rounded-2xl map card with fade-up animation, ShareCard, gradient "Share to Story" button that triggers the 1080×1920 PNG compositor + native share sheet, border-white Delete). Loading and not-found states reuse the same header treatment
 - `src/components/RideMap.tsx` — Leaflet map wrapper
 - `src/components/SpeedGraph.tsx` — SVG speed-over-distance graph; inline + poster layouts for PNG export
 - `src/components/SpeedGraph.test.tsx` — placeholder + render smoke tests
@@ -99,10 +99,11 @@ The living map of what exists in this repo and where. **Update this file every t
 
 ## Share
 
-- `src/features/share/exportPng.ts` — offscreen-canvas PNG compositor (1080×1620: OSM tiles + route + stats card with embedded speed graph)
+- `src/features/share/exportPng.ts` — pure-canvas compositor that renders a 1080×1920 Instagram-Story PNG: multiply-tinted OSM map hero with route halo, brand-gradient wash (orange → magenta → violet), MotoTrack logo + wordmark redrawn from `public/icon-512.svg` paths, ride title in brand gradient, optional bike chip, two hero stat tiles (Distance + Top Speed) with gradient-filled values, and a 3×2 grid of the remaining stats. Awaits `document.fonts.ready` so Space Grotesk / Inter paint correctly. No DOM rasterisation — everything goes through `CanvasRenderingContext2D`
+- `src/features/share/exportPng.test.ts` — stubs `fetch` + `createImageBitmap` + `canvas.toBlob` under jsdom; asserts the short-ride guard throws and that the compositor produces an 1080×1920 PNG blob
 - `src/features/share/projection.ts` — Web Mercator helpers for tile coordinates
-- `src/features/share/share.ts` — web `sharePng()` wrapper
-- `src/components/ShareCard.tsx` — DOM stats card (bike chip, speed graph, 8 stat tiles: distance, duration, moving time, idle time, avg/top speed, max lean, elev gain). Inline variant uses the shared rounded-3xl/border-white surface with rounded-2xl tiles and a "Stats" overline; poster variant keeps the 1080-wide `MotoTrack` + ride-title layout for html-to-image
+- `src/features/share/share.ts` — web `sharePng()` wrapper (Web Share API with files on iOS 15+/Android Chrome 89+, download fallback). On mobile the share sheet exposes "Add to Instagram Story" / "WhatsApp Status" / etc. directly — no platform-specific code needed
+- `src/components/ShareCard.tsx` — inline stats card shown on the ride summary screen (bike chip, speed graph, 8 stat tiles: distance, duration, moving time, idle time, avg/top speed, max lean, elev gain). Rounded-3xl surface with rounded-2xl tiles and a "Stats" overline. The shareable PNG is composed separately in `exportPng.ts` — ShareCard is now a pure UI surface, not a rasterisation target
 
 ## PWA
 
