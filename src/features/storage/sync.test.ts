@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Ride, RideStats } from '../../types/ride'
 import type { Bike } from '../../types/bike'
+import type { Trip } from '../../types/trip'
 
 const rideStore = new Map<string, Ride>()
 const bikeStore = new Map<string, Bike>()
+const tripStore = new Map<string, Trip>()
 
 vi.mock('./db', () => ({
   db: {
@@ -32,6 +34,18 @@ vi.mock('./db', () => ({
         return Promise.resolve()
       },
     },
+    trips: {
+      toArray: () => Promise.resolve(Array.from(tripStore.values())),
+      bulkPut: (trips: Trip[]) => {
+        for (const t of trips) tripStore.set(t.id, t)
+        return Promise.resolve()
+      },
+      update: (id: string, patch: Partial<Trip>) => {
+        const existing = tripStore.get(id)
+        if (existing) tripStore.set(id, { ...existing, ...patch })
+        return Promise.resolve()
+      },
+    },
   },
 }))
 
@@ -41,6 +55,7 @@ vi.mock('../auth/session', () => ({
 
 const rideUpsertSpy = vi.fn().mockResolvedValue({ error: null })
 const bikeUpsertSpy = vi.fn().mockResolvedValue({ error: null })
+const tripUpsertSpy = vi.fn().mockResolvedValue({ error: null })
 const rideSelect: {
   rows: unknown[]
   error: { message: string } | null
@@ -49,18 +64,27 @@ const bikeSelect: {
   rows: unknown[]
   error: { message: string } | null
 } = { rows: [], error: null }
+const tripSelect: {
+  rows: unknown[]
+  error: { message: string } | null
+} = { rows: [], error: null }
 
 vi.mock('../auth/supabase', () => ({
   supabase: {
     from: (table: string) => ({
-      upsert: (...args: unknown[]) =>
-        (table === 'rides' ? rideUpsertSpy : bikeUpsertSpy)(...args),
+      upsert: (...args: unknown[]) => {
+        if (table === 'rides') return rideUpsertSpy(...args)
+        if (table === 'bikes') return bikeUpsertSpy(...args)
+        return tripUpsertSpy(...args)
+      },
       select: () => ({
         order: () =>
           Promise.resolve(
             table === 'rides'
               ? { data: rideSelect.rows, error: rideSelect.error }
-              : { data: bikeSelect.rows, error: bikeSelect.error },
+              : table === 'bikes'
+                ? { data: bikeSelect.rows, error: bikeSelect.error }
+                : { data: tripSelect.rows, error: tripSelect.error },
           ),
       }),
     }),
@@ -70,6 +94,7 @@ vi.mock('../auth/supabase', () => ({
 import {
   pullRemoteRides,
   pullRemoteBikes,
+  pullRemoteTrips,
   syncWithCloud,
 } from './sync'
 
@@ -87,16 +112,20 @@ const emptyStats: RideStats = {
 beforeEach(() => {
   rideStore.clear()
   bikeStore.clear()
+  tripStore.clear()
   rideUpsertSpy.mockClear()
   bikeUpsertSpy.mockClear()
+  tripUpsertSpy.mockClear()
   rideSelect.rows = []
   rideSelect.error = null
   bikeSelect.rows = []
   bikeSelect.error = null
+  tripSelect.rows = []
+  tripSelect.error = null
 })
 
 describe('pullRemoteRides', () => {
-  it('upserts remote rides into Dexie with name/bike_id mapped and syncedAt set', async () => {
+  it('upserts remote rides into Dexie with name/bike_id/trip_id mapped and syncedAt set', async () => {
     rideSelect.rows = [
       {
         id: 'ride-a',
@@ -107,6 +136,7 @@ describe('pullRemoteRides', () => {
         track: [],
         name: 'Monsoon loop',
         bike_id: 'bike-1',
+        trip_id: 'trip-1',
       },
     ]
 
@@ -118,10 +148,11 @@ describe('pullRemoteRides', () => {
     expect(local?.startedAt).toBe(1_700_000_000_000)
     expect(local?.name).toBe('Monsoon loop')
     expect(local?.bikeId).toBe('bike-1')
+    expect(local?.tripId).toBe('trip-1')
     expect(local?.syncedAt).toBeTypeOf('number')
   })
 
-  it('omits name/bikeId when the server row has nulls', async () => {
+  it('omits name/bikeId/tripId when the server row has nulls', async () => {
     rideSelect.rows = [
       {
         id: 'ride-b',
@@ -132,6 +163,7 @@ describe('pullRemoteRides', () => {
         track: [],
         name: null,
         bike_id: null,
+        trip_id: null,
       },
     ]
 
@@ -140,6 +172,7 @@ describe('pullRemoteRides', () => {
     const local = rideStore.get('ride-b')
     expect(local?.name).toBeUndefined()
     expect(local?.bikeId).toBeUndefined()
+    expect(local?.tripId).toBeUndefined()
   })
 
   it('overwrites an existing local copy with the server copy', async () => {
@@ -162,6 +195,7 @@ describe('pullRemoteRides', () => {
         track: [{ lat: 1, lng: 2, ts: 3, speed: null, alt: null, acc: 5 }],
         name: null,
         bike_id: null,
+        trip_id: null,
       },
     ]
 
@@ -199,8 +233,31 @@ describe('pullRemoteBikes', () => {
   })
 })
 
+describe('pullRemoteTrips', () => {
+  it('upserts remote trips into Dexie with cover/notes/syncedAt mapped', async () => {
+    tripSelect.rows = [
+      {
+        id: 'trip-1',
+        name: 'Ladakh 2026',
+        cover_color: 'aurora',
+        notes: '6-day loop',
+        created_at: new Date(1_700_000_000_000).toISOString(),
+      },
+    ]
+
+    await pullRemoteTrips()
+
+    const local = tripStore.get('trip-1')
+    expect(local?.name).toBe('Ladakh 2026')
+    expect(local?.coverColor).toBe('aurora')
+    expect(local?.notes).toBe('6-day loop')
+    expect(local?.createdAt).toBe(1_700_000_000_000)
+    expect(local?.syncedAt).toBeTypeOf('number')
+  })
+})
+
 describe('syncWithCloud', () => {
-  it('pushes local unsynced rows, then pulls remote rides + bikes', async () => {
+  it('pushes local unsynced rows, then pulls remote trips/rides/bikes', async () => {
     rideStore.set('local-only-ride', {
       id: 'local-only-ride',
       deviceId: 'phone-B',
@@ -216,6 +273,14 @@ describe('syncWithCloud', () => {
       createdAt: 5,
       syncedAt: null,
     })
+    tripStore.set('local-only-trip', {
+      id: 'local-only-trip',
+      name: 'Coastal run',
+      coverColor: 'ocean',
+      notes: null,
+      createdAt: 4,
+      syncedAt: null,
+    })
     rideSelect.rows = [
       {
         id: 'remote-only-ride',
@@ -226,6 +291,7 @@ describe('syncWithCloud', () => {
         track: [],
         name: null,
         bike_id: null,
+        trip_id: null,
       },
     ]
     bikeSelect.rows = [
@@ -235,12 +301,23 @@ describe('syncWithCloud', () => {
         created_at: new Date(0).toISOString(),
       },
     ]
+    tripSelect.rows = [
+      {
+        id: 'remote-only-trip',
+        name: 'Monsoon ride',
+        cover_color: 'neon',
+        notes: null,
+        created_at: new Date(0).toISOString(),
+      },
+    ]
 
     await syncWithCloud()
 
     expect(rideUpsertSpy).toHaveBeenCalledTimes(1)
     expect(bikeUpsertSpy).toHaveBeenCalledTimes(1)
+    expect(tripUpsertSpy).toHaveBeenCalledTimes(1)
     expect(rideStore.has('remote-only-ride')).toBe(true)
     expect(bikeStore.has('remote-only-bike')).toBe(true)
+    expect(tripStore.has('remote-only-trip')).toBe(true)
   })
 })

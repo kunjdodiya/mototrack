@@ -9,6 +9,9 @@ import NewClubScreen from './components/NewClubScreen'
 import ClubDetailScreen from './components/ClubDetailScreen'
 import NewEventScreen from './components/NewEventScreen'
 import EventDetailScreen from './components/EventDetailScreen'
+import TripsList from './components/TripsList'
+import NewTripScreen from './components/NewTripScreen'
+import TripDetailScreen from './components/TripDetailScreen'
 import AuthCallback from './components/AuthCallback'
 import PrivacyScreen from './components/PrivacyScreen'
 import AuthGate from './features/auth/AuthGate'
@@ -30,6 +33,9 @@ export const router = createBrowserRouter([
       { index: true, element: <RecordScreen /> },
       { path: 'history', element: <HistoryList /> },
       { path: 'ride/:id', element: <RideSummary /> },
+      { path: 'trips', element: <TripsList /> },
+      { path: 'trips/new', element: <NewTripScreen /> },
+      { path: 'trips/:id', element: <TripDetailScreen /> },
       { path: 'community', element: <CommunityScreen /> },
       { path: 'community/clubs/new', element: <NewClubScreen /> },
       { path: 'community/clubs/:id', element: <ClubDetailScreen /> },

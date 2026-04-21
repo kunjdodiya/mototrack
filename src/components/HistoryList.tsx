@@ -7,6 +7,7 @@ import {
   formatDistance,
   formatDuration,
 } from '../features/stats/format'
+import { TRIP_COVER_CLASS } from '../features/trips/covers'
 
 export default function HistoryList() {
   const navigate = useNavigate()
@@ -16,7 +17,13 @@ export default function HistoryList() {
     [],
   )
   const bikes = useLiveQuery(() => db.bikes.toArray(), [], [])
+  const trips = useLiveQuery(
+    () => db.trips.orderBy('createdAt').reverse().toArray(),
+    [],
+    [],
+  )
   const bikeNameById = new Map(bikes.map((b) => [b.id, b.name]))
+  const tripById = new Map(trips.map((t) => [t.id, t]))
 
   const handleSeed = async () => {
     const ride = await seedDemoRide()
@@ -45,12 +52,15 @@ export default function HistoryList() {
         )}
       </header>
 
+      <TripsStrip trips={trips} />
+
       {rides.length === 0 ? (
         <EmptyState />
       ) : (
         <ul className="mt-6 flex flex-col gap-3">
           {rides.map((r, i) => {
             const bikeName = r.bikeId ? bikeNameById.get(r.bikeId) : null
+            const trip = r.tripId ? tripById.get(r.tripId) : null
             return (
               <li
                 key={r.id}
@@ -98,6 +108,12 @@ export default function HistoryList() {
                             <span className="text-neutral-300">🏍 {bikeName}</span>
                           </>
                         )}
+                        {trip && (
+                          <>
+                            <span className="text-neutral-600">·</span>
+                            <span className="text-neutral-300">🛣 {trip.name}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -108,6 +124,61 @@ export default function HistoryList() {
         </ul>
       )}
     </div>
+  )
+}
+
+function TripsStrip({
+  trips,
+}: {
+  trips: { id: string; name: string; coverColor: keyof typeof TRIP_COVER_CLASS }[]
+}) {
+  return (
+    <section className="mt-6 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="flex flex-col">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">
+            Trips
+          </span>
+          <span className="text-xs text-neutral-400">
+            Group multi-day rides into one recap
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/trips"
+            className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-neutral-200 transition hover:border-white/20"
+          >
+            All trips
+          </Link>
+          <Link
+            to="/trips/new"
+            className="rounded-full bg-brand-gradient px-3 py-1.5 text-xs font-bold text-white shadow-glow-orange transition active:scale-[0.97]"
+          >
+            New
+          </Link>
+        </div>
+      </div>
+
+      {trips.length > 0 && (
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+          {trips.slice(0, 8).map((t) => (
+            <Link
+              key={t.id}
+              to={`/trips/${t.id}`}
+              className="flex shrink-0 items-center gap-2 rounded-full border border-white/5 bg-white/[0.03] px-3 py-1.5 text-xs transition hover:border-white/10 active:scale-[0.97]"
+            >
+              <span
+                aria-hidden
+                className={`h-3 w-3 rounded-full bg-gradient-to-br ${TRIP_COVER_CLASS[t.coverColor]}`}
+              />
+              <span className="max-w-[160px] truncate font-semibold text-neutral-200">
+                {t.name}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
   )
 }
 

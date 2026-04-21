@@ -1,10 +1,12 @@
 import Dexie, { type Table } from 'dexie'
 import type { Ride, RideStats } from '../../types/ride'
 import type { Bike } from '../../types/bike'
+import type { Trip } from '../../types/trip'
 
 class MotoDB extends Dexie {
   rides!: Table<Ride, string>
   bikes!: Table<Bike, string>
+  trips!: Table<Trip, string>
 
   constructor() {
     super('mototrack')
@@ -34,6 +36,13 @@ class MotoDB extends Dexie {
             }
           })
       })
+    // v3 adds the trips table and a `tripId` index on rides so
+    // `where('tripId').equals(id)` can list a trip's rides without a full scan.
+    this.version(3).stores({
+      rides: 'id, startedAt, syncedAt, tripId',
+      bikes: 'id, createdAt, syncedAt',
+      trips: 'id, createdAt, syncedAt',
+    })
   }
 }
 

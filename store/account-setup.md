@@ -89,6 +89,15 @@ The Community tab (clubs + ride hosting + RSVPs) needs four tables + RLS:
 
 No extra dashboard UI to click. Once the script runs, riders can create a club, invite friends to join, host rides inside their clubs, and RSVP — all from the Community tab.
 
+## 7b. Trips table (multi-day tours)
+
+Trips let riders group multiple day rides into one combined recap.
+
+1. Dashboard → **SQL Editor** → New query → paste the contents of [`supabase/trips.sql`](../supabase/trips.sql) → Run.
+2. Idempotent — safe to re-run. Creates `public.trips` (RLS scoped by `auth.uid()`) and adds a nullable `trip_id` foreign key on `public.rides` with `ON DELETE SET NULL` so deleting a trip detaches its rides but never deletes them.
+
+Until this runs, the Trips tab shows no cloud data and new trips only live on the device that created them.
+
 ## 8. Apple-specific: distribution certificate + provisioning profile
 
 Xcode handles most of this automatically once your Apple ID is part of the Developer Program:

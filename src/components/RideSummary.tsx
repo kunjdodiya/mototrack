@@ -7,6 +7,7 @@ import { platform } from '../features/platform'
 import { formatDateTime } from '../features/stats/format'
 import RideMap from './RideMap'
 import ShareCard from './ShareCard'
+import AddToTripSheet from './AddToTripSheet'
 
 export default function RideSummary() {
   const { id } = useParams()
@@ -105,6 +106,17 @@ export default function RideSummary() {
 
       <div className="animate-fade-up" style={{ animationDelay: '60ms' }}>
         <ShareCard ride={ride} />
+      </div>
+
+      <div className="animate-fade-up" style={{ animationDelay: '90ms' }}>
+        <AddToTripSheet
+          rideId={ride.id}
+          currentTripId={ride.tripId ?? null}
+          onChange={async () => {
+            const fresh = await getRide(ride.id)
+            if (fresh) setRide(fresh)
+          }}
+        />
       </div>
 
       <div className="grid animate-fade-up grid-cols-2 gap-3" style={{ animationDelay: '120ms' }}>

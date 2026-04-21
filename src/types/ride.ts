@@ -28,4 +28,5 @@ export type Ride = {
   syncedAt: number | null
   name?: string
   bikeId?: string
+  tripId?: string
 }
