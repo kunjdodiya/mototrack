@@ -32,6 +32,8 @@ export default function RecordScreen() {
   const reset = useRecorder((s) => s.reset)
 
   const bikes = useLiveQuery(() => db.bikes.orderBy('createdAt').toArray(), [], [])
+  const rideCount = useLiveQuery(() => db.rides.count(), [], 0)
+  const firstTime = rideCount === 0
 
   const [rideName, setRideName] = useState('')
   const [selectedBikeId, setSelectedBikeId] = useState<string>('')
@@ -121,6 +123,51 @@ export default function RecordScreen() {
                 : 'Tap Start, keep the screen on, and ride.'}
             </p>
           </header>
+
+          {firstTime && (
+            <section
+              aria-label="What you'll get"
+              className="rounded-2xl border border-white/5 bg-white/[0.03] p-5"
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-moto-orange">
+                First ride?
+              </p>
+              <p className="mt-2 text-sm text-neutral-300">
+                Tap Start and ride — MotoTrack records your route, speed and
+                distance live. When you stop, you'll get a detailed summary
+                and a shareable story card ready for Instagram, WhatsApp and
+                any other social app.
+              </p>
+              <ul className="mt-4 flex flex-col gap-2 text-sm text-neutral-300">
+                <li className="flex items-start gap-2.5">
+                  <span
+                    aria-hidden
+                    className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-gradient"
+                  />
+                  <span>Live speed, distance and route as you ride.</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span
+                    aria-hidden
+                    className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-gradient"
+                  />
+                  <span>
+                    A full summary when you stop — top speed, average speed,
+                    duration and your exact map.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span
+                    aria-hidden
+                    className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-gradient"
+                  />
+                  <span>
+                    One-tap share to Instagram, WhatsApp and other social apps.
+                  </span>
+                </li>
+              </ul>
+            </section>
+          )}
 
           <div className="flex flex-col gap-3">
             <label className="flex flex-col gap-1.5">

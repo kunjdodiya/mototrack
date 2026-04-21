@@ -13,12 +13,13 @@ vi.mock('./RideMap', () => ({
 }))
 
 vi.mock('dexie-react-hooks', () => ({
-  useLiveQuery: () => [],
+  useLiveQuery: (_fn: unknown, _deps?: unknown, def?: unknown) => def,
 }))
 
 vi.mock('../features/storage/db', () => ({
   db: {
     bikes: { orderBy: () => ({ toArray: vi.fn().mockResolvedValue([]) }) },
+    rides: { count: vi.fn().mockResolvedValue(0) },
   },
 }))
 
@@ -67,6 +68,19 @@ describe('RecordScreen live map frame', () => {
     expect(frame.className).toMatch(/animate-gradient-shift/)
     expect(frame.className).toMatch(/shadow-glow-orange/)
     expect(frame.className).not.toMatch(/opacity-60/)
+  })
+
+  it('shows the first-ride walkthrough card on the idle screen', () => {
+    const { getByLabelText, getByText } = render(
+      <MemoryRouter>
+        <RecordScreen />
+      </MemoryRouter>,
+    )
+    const card = getByLabelText("What you'll get")
+    expect(card.textContent).toMatch(/First ride/i)
+    expect(card.textContent).toMatch(/Instagram/i)
+    expect(card.textContent).toMatch(/WhatsApp/i)
+    expect(getByText(/top speed, average speed/i)).toBeDefined()
   })
 
   it('dims the frame and stops the animation while paused', () => {
