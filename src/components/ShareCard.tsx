@@ -39,7 +39,7 @@ export default function ShareCard({ ride, poster = false }: Props) {
 
   const root = poster
     ? 'w-[1080px] p-12 text-white'
-    : 'w-full rounded-xl border border-neutral-800 bg-neutral-900/60 p-5'
+    : 'w-full rounded-3xl border border-white/5 bg-white/[0.02] p-5'
 
   const labelSize = poster ? 'text-base' : 'text-[10px]'
   const valueSize = poster ? 'text-5xl' : 'text-xl'
@@ -56,26 +56,30 @@ export default function ShareCard({ ride, poster = false }: Props) {
     >
       <div className="flex items-baseline justify-between">
         <div className="min-w-0 flex-1">
-          <div
-            className={`font-extrabold tracking-tight ${poster ? 'text-3xl' : 'text-sm'}`}
-          >
-            <span style={{ color: '#ff4d00' }}>Moto</span>Track
-          </div>
-          <div
-            className={`mt-1 truncate font-bold tracking-tight ${poster ? 'text-5xl' : 'text-xl'}`}
-          >
-            {title}
-          </div>
-          {subtitle && (
-            <div
-              className={`mt-1 ${poster ? 'text-xl text-neutral-400' : 'text-xs text-neutral-500'}`}
-            >
-              {subtitle}
+          {poster ? (
+            <>
+              <div className="font-display text-3xl font-extrabold tracking-tight">
+                <span style={{ color: '#ff4d00' }}>Moto</span>Track
+              </div>
+              <div className="mt-1 truncate font-display text-5xl font-bold tracking-tight">
+                {title}
+              </div>
+              {subtitle && (
+                <div className="mt-1 text-xl text-neutral-400">{subtitle}</div>
+              )}
+            </>
+          ) : (
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">
+              Stats
             </div>
           )}
           {ride.bikeId && bikeName && (
             <div
-              className={`mt-2 inline-block rounded-full border border-neutral-700 ${poster ? 'px-4 py-1 text-lg' : 'px-2.5 py-0.5 text-xs'} font-semibold text-neutral-200`}
+              className={
+                poster
+                  ? 'mt-2 inline-block rounded-full border border-neutral-700 px-4 py-1 text-lg font-semibold text-neutral-200'
+                  : 'mt-2 inline-block rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-xs font-semibold text-neutral-200'
+              }
               data-testid="bike-chip"
             >
               🏍 {bikeName}
@@ -168,7 +172,7 @@ function Stat({
       className={
         poster
           ? ''
-          : 'rounded-lg border border-neutral-800 bg-neutral-950/60 p-3'
+          : 'rounded-2xl border border-white/5 bg-white/[0.03] p-3'
       }
     >
       <div

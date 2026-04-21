@@ -78,7 +78,7 @@ The living map of what exists in this repo and where. **Update this file every t
 ## History + Ride detail
 
 - `src/components/HistoryList.tsx` — newest-first ride list; live-queried via dexie-react-hooks; shows ride name + bike chip when present
-- `src/components/RideSummary.tsx` — detail view: map + stats + PNG share
+- `src/components/RideSummary.tsx` — detail view styled to match the rest of the app (uppercase overline + ride title, rounded-2xl map card with fade-up animation, ShareCard, gradient Export-PNG button, border-white Delete). Loading and not-found states reuse the same header treatment
 - `src/components/RideMap.tsx` — Leaflet map wrapper
 - `src/components/SpeedGraph.tsx` — SVG speed-over-distance graph; inline + poster layouts for PNG export
 - `src/components/SpeedGraph.test.tsx` — placeholder + render smoke tests
@@ -99,7 +99,7 @@ The living map of what exists in this repo and where. **Update this file every t
 - `src/features/share/exportPng.ts` — offscreen-canvas PNG compositor (1080×1620: OSM tiles + route + stats card with embedded speed graph)
 - `src/features/share/projection.ts` — Web Mercator helpers for tile coordinates
 - `src/features/share/share.ts` — web `sharePng()` wrapper
-- `src/components/ShareCard.tsx` — DOM stats card (ride name title, bike chip, speed graph, 8 stat tiles: distance, duration, moving time, idle time, avg/top speed, max lean, elev gain); rendered inline + off-screen at 1080 for html-to-image
+- `src/components/ShareCard.tsx` — DOM stats card (bike chip, speed graph, 8 stat tiles: distance, duration, moving time, idle time, avg/top speed, max lean, elev gain). Inline variant uses the shared rounded-3xl/border-white surface with rounded-2xl tiles and a "Stats" overline; poster variant keeps the 1080-wide `MotoTrack` + ride-title layout for html-to-image
 
 ## PWA
 
