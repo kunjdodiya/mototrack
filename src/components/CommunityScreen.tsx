@@ -1,48 +1,46 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import type { Club, ClubEvent } from '../types/club'
+import { listClubs, listMyClubs } from '../features/community/clubs'
+import { listUpcomingEventsForMyClubs } from '../features/community/events'
+import { ACCENT_GRADIENT_CLASS, clubInitials } from '../features/community/accents'
 
 type Tab = 'clubs' | 'host'
 
-const featuredClubs = [
-  {
-    name: 'Twisties & Tacos',
-    tag: 'Weekend · Canyon runs',
-    members: 214,
-    city: 'Bay Area, CA',
-    accent: 'from-moto-orange to-moto-magenta',
-  },
-  {
-    name: 'Iron Compass',
-    tag: 'Touring · Long-distance',
-    members: 87,
-    city: 'Pacific Northwest',
-    accent: 'from-moto-magenta to-moto-violet',
-  },
-  {
-    name: 'Night Apex',
-    tag: 'Track · Sportbike',
-    members: 41,
-    city: 'Los Angeles, CA',
-    accent: 'from-moto-violet to-moto-cyan',
-  },
-]
-
-const upcomingEvents = [
-  {
-    title: 'Mulholland Morning Loop',
-    host: 'Twisties & Tacos',
-    when: 'Sat · 7:00 AM',
-    going: 18,
-  },
-  {
-    title: 'Sunset Ridge Meet-up',
-    host: 'Iron Compass',
-    when: 'Sun · 5:30 PM',
-    going: 34,
-  },
-]
-
 export default function CommunityScreen() {
   const [tab, setTab] = useState<Tab>('host')
+  const [allClubs, setAllClubs] = useState<Club[] | null>(null)
+  const [myClubs, setMyClubs] = useState<Club[] | null>(null)
+  const [upcoming, setUpcoming] = useState<ClubEvent[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const [all, mine, events] = await Promise.all([
+          listClubs(),
+          listMyClubs(),
+          listUpcomingEventsForMyClubs(),
+        ])
+        if (cancelled) return
+        setAllClubs(all)
+        setMyClubs(mine)
+        setUpcoming(events)
+      } catch (err: unknown) {
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : 'Could not load community.')
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const myClubIds = new Set((myClubs ?? []).map((c) => c.id))
+  const discover = (allClubs ?? []).filter((c) => !myClubIds.has(c.id))
+  const hasAnyClub = (myClubs ?? []).length > 0
 
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-6 px-5 pb-10 pt-8">
@@ -68,21 +66,9 @@ export default function CommunityScreen() {
           aria-hidden
           className={[
             'absolute inset-y-1 w-1/2 rounded-xl bg-brand-gradient shadow-tab-active transition-all duration-500 ease-out',
-            tab === 'clubs' ? 'left-1' : 'left-[calc(50%-0.25rem)]',
+            tab === 'host' ? 'left-1' : 'left-[calc(50%-0.25rem)]',
           ].join(' ')}
         />
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'clubs'}
-          onClick={() => setTab('clubs')}
-          className={[
-            'relative z-10 rounded-xl py-2.5 text-sm font-semibold tracking-tight transition-colors duration-300',
-            tab === 'clubs' ? 'text-white' : 'text-neutral-400',
-          ].join(' ')}
-        >
-          Clubs
-        </button>
         <button
           type="button"
           role="tab"
@@ -95,90 +81,116 @@ export default function CommunityScreen() {
         >
           Host
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'clubs'}
+          onClick={() => setTab('clubs')}
+          className={[
+            'relative z-10 rounded-xl py-2.5 text-sm font-semibold tracking-tight transition-colors duration-300',
+            tab === 'clubs' ? 'text-white' : 'text-neutral-400',
+          ].join(' ')}
+        >
+          Clubs
+        </button>
       </div>
 
-      {tab === 'clubs' ? <ClubsPanel /> : <HostPanel />}
+      {error && (
+        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          {error}
+        </div>
+      )}
 
-      <PreviewNote />
+      {tab === 'clubs' ? (
+        <ClubsPanel
+          myClubs={myClubs}
+          discover={discover}
+          loaded={allClubs !== null && myClubs !== null}
+        />
+      ) : (
+        <HostPanel
+          myClubs={myClubs ?? []}
+          upcoming={upcoming}
+          hasAnyClub={hasAnyClub}
+        />
+      )}
     </div>
   )
 }
 
-function ClubsPanel() {
+function ClubsPanel({
+  myClubs,
+  discover,
+  loaded,
+}: {
+  myClubs: Club[] | null
+  discover: Club[]
+  loaded: boolean
+}) {
   return (
     <div className="flex animate-fade-up flex-col gap-5">
-      <section>
-        <SectionHeading title="Featured clubs" hint="Near you" />
-        <ul className="mt-3 flex flex-col gap-3">
-          {featuredClubs.map((club, i) => (
-            <li
-              key={club.name}
-              className="animate-fade-up"
-              style={{ animationDelay: `${i * 60}ms` }}
-            >
-              <button
-                type="button"
-                className="group w-full overflow-hidden rounded-2xl border border-white/5 bg-white/[0.02] p-4 text-left transition-all duration-300 hover:border-white/10 hover:bg-white/[0.04] active:scale-[0.99]"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${club.accent} text-sm font-bold font-display text-white shadow-glow-orange`}
-                  >
-                    {initials(club.name)}
-                    <span className="pointer-events-none absolute inset-0 rounded-xl bg-white/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <h3 className="truncate font-display text-base font-semibold tracking-tight">
-                        {club.name}
-                      </h3>
-                      <span className="shrink-0 text-xs font-medium text-neutral-400">
-                        {club.members} riders
-                      </span>
-                    </div>
-                    <p className="mt-0.5 truncate text-xs text-neutral-500">
-                      {club.tag} · {club.city}
-                    </p>
-                  </div>
-                  <ChevronRight />
-                </div>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <div className="flex items-center justify-between gap-3">
+        <SectionHeading
+          title={myClubs && myClubs.length > 0 ? 'My clubs' : 'Clubs'}
+          hint={
+            myClubs && myClubs.length > 0
+              ? `${myClubs.length} joined`
+              : undefined
+          }
+        />
+        <Link
+          to="/community/clubs/new"
+          className="inline-flex items-center gap-1 rounded-full bg-brand-gradient px-3 py-1.5 text-xs font-semibold text-white shadow-glow-orange transition active:scale-[0.97]"
+        >
+          <PlusIcon />
+          New club
+        </Link>
+      </div>
 
-      <section>
-        <SectionHeading title="Upcoming rides" hint="From clubs you follow" />
-        <ul className="mt-3 flex flex-col gap-3">
-          {upcomingEvents.map((ev, i) => (
-            <li
-              key={ev.title}
-              className="animate-fade-up rounded-2xl border border-white/5 bg-white/[0.02] p-4"
-              style={{ animationDelay: `${(i + 3) * 60}ms` }}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="truncate font-display text-base font-semibold tracking-tight">
-                    {ev.title}
-                  </h3>
-                  <p className="mt-0.5 truncate text-xs text-neutral-500">
-                    {ev.host} · {ev.when}
-                  </p>
-                </div>
-                <span className="rounded-full bg-brand-gradient-soft px-3 py-1 text-xs font-semibold text-white">
-                  {ev.going} going
-                </span>
-              </div>
-            </li>
+      {!loaded ? (
+        <ClubListSkeleton />
+      ) : myClubs && myClubs.length > 0 ? (
+        <ul className="flex flex-col gap-3">
+          {myClubs.map((c, i) => (
+            <ClubRow key={c.id} club={c} joined index={i} />
           ))}
         </ul>
-      </section>
+      ) : null}
+
+      {loaded && (
+        <section>
+          <SectionHeading
+            title="Discover"
+            hint={discover.length > 0 ? `${discover.length} clubs` : undefined}
+          />
+          {discover.length === 0 ? (
+            <EmptyClubs />
+          ) : (
+            <ul className="mt-3 flex flex-col gap-3">
+              {discover.map((c, i) => (
+                <ClubRow key={c.id} club={c} index={i} />
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
     </div>
   )
 }
 
-function HostPanel() {
+function HostPanel({
+  myClubs,
+  upcoming,
+  hasAnyClub,
+}: {
+  myClubs: Club[]
+  upcoming: ClubEvent[] | null
+  hasAnyClub: boolean
+}) {
+  const createTarget = hasAnyClub
+    ? `/community/events/new?clubId=${encodeURIComponent(myClubs[0]?.id ?? '')}`
+    : '/community/clubs/new'
+
   return (
     <div className="flex animate-fade-up flex-col gap-5">
       <section className="relative overflow-hidden rounded-2xl border border-white/5 bg-brand-gradient-soft p-5 shadow-glow-violet">
@@ -187,26 +199,47 @@ function HostPanel() {
           Host a ride
         </h2>
         <p className="relative mt-1 max-w-sm text-sm text-white/85">
-          Plan a route, set a time, and invite riders. Track who's coming and
-          chat before the kickstand goes up.
+          {hasAnyClub
+            ? 'Pick a meeting spot, set a time, and your club gets a ride they can RSVP to.'
+            : "Clubs host rides. Start your own club in under a minute — you'll be its first member."}
         </p>
-        <button
-          type="button"
+        <Link
+          to={createTarget}
           className="relative mt-4 inline-flex items-center gap-2 rounded-full bg-black/40 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition active:scale-[0.98]"
         >
           <PlusIcon />
-          Create a ride
-        </button>
+          {hasAnyClub ? 'Create a ride' : 'Start a club'}
+        </Link>
+      </section>
+
+      <section>
+        <SectionHeading
+          title="My upcoming rides"
+          hint={upcoming && upcoming.length > 0 ? 'From your clubs' : undefined}
+        />
+        {upcoming === null ? (
+          <EventListSkeleton />
+        ) : upcoming.length === 0 ? (
+          <p className="mt-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-4 text-sm text-neutral-400">
+            Nothing on the calendar. Host one — or join a club to see theirs.
+          </p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-3">
+            {upcoming.map((ev, i) => (
+              <EventRow key={ev.id} event={ev} index={i} />
+            ))}
+          </ul>
+        )}
       </section>
 
       <section>
         <SectionHeading title="Host tools" hint="What you get" />
         <ul className="mt-3 grid grid-cols-2 gap-3">
           {[
-            { label: 'Route planner', hint: 'Pin waypoints' },
-            { label: 'RSVPs', hint: 'Head-count per ride' },
-            { label: 'Meet-up chat', hint: 'Rally the crew' },
-            { label: 'Event page', hint: 'Shareable link' },
+            { label: 'Event page', hint: 'Title · time · meet-point' },
+            { label: 'RSVPs', hint: 'Going / maybe / no' },
+            { label: 'Members only', hint: 'Scoped to your club' },
+            { label: 'Edit + cancel', hint: 'You own your events' },
           ].map((f, i) => (
             <li
               key={f.label}
@@ -225,12 +258,90 @@ function HostPanel() {
   )
 }
 
+function ClubRow({
+  club,
+  joined,
+  index,
+}: {
+  club: Club
+  joined?: boolean
+  index: number
+}) {
+  return (
+    <li
+      className="animate-fade-up"
+      style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+    >
+      <Link
+        to={`/community/clubs/${club.id}`}
+        className="group block overflow-hidden rounded-2xl border border-white/5 bg-white/[0.02] p-4 transition-all duration-300 hover:border-white/10 hover:bg-white/[0.04] active:scale-[0.99]"
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${ACCENT_GRADIENT_CLASS[club.accent]} text-sm font-bold font-display text-white shadow-glow-orange`}
+          >
+            {clubInitials(club.name)}
+            <span className="pointer-events-none absolute inset-0 rounded-xl bg-white/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline justify-between gap-2">
+              <h3 className="truncate font-display text-base font-semibold tracking-tight">
+                {club.name}
+              </h3>
+              <span className="shrink-0 text-xs font-medium text-neutral-400">
+                {club.memberCount} rider{club.memberCount === 1 ? '' : 's'}
+              </span>
+            </div>
+            <p className="mt-0.5 truncate text-xs text-neutral-500">
+              {[club.city, club.description].filter(Boolean).join(' · ') ||
+                'Motorcycle club'}
+            </p>
+          </div>
+          {joined && (
+            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+              Joined
+            </span>
+          )}
+          <ChevronRight />
+        </div>
+      </Link>
+    </li>
+  )
+}
+
+function EventRow({ event, index }: { event: ClubEvent; index: number }) {
+  return (
+    <li
+      className="animate-fade-up"
+      style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+    >
+      <Link
+        to={`/community/events/${event.id}`}
+        className="group block rounded-2xl border border-white/5 bg-white/[0.02] p-4 transition-all duration-300 hover:border-white/10 hover:bg-white/[0.04] active:scale-[0.99]"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="truncate font-display text-base font-semibold tracking-tight">
+              {event.title}
+            </h3>
+            <p className="mt-0.5 truncate text-xs text-neutral-500">
+              {formatEventWhen(event.startAt)}
+              {event.meetLabel ? ` · ${event.meetLabel}` : ''}
+            </p>
+          </div>
+          <span className="shrink-0 rounded-full bg-brand-gradient-soft px-3 py-1 text-xs font-semibold text-white">
+            {event.goingCount} going
+          </span>
+        </div>
+      </Link>
+    </li>
+  )
+}
+
 function SectionHeading({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <h2 className="font-display text-lg font-bold tracking-tight">
-        {title}
-      </h2>
+      <h2 className="font-display text-lg font-bold tracking-tight">{title}</h2>
       {hint && (
         <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-500">
           {hint}
@@ -240,21 +351,44 @@ function SectionHeading({ title, hint }: { title: string; hint?: string }) {
   )
 }
 
-function PreviewNote() {
+function ClubListSkeleton() {
   return (
-    <p className="mt-2 rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-3 text-center text-xs text-neutral-500">
-      Community is in preview. Clubs, RSVPs, and hosting launch soon.
-    </p>
+    <ul className="flex flex-col gap-3">
+      {[0, 1, 2].map((i) => (
+        <li
+          key={i}
+          className="h-20 animate-pulse rounded-2xl border border-white/5 bg-white/[0.03]"
+        />
+      ))}
+    </ul>
   )
 }
 
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((s) => s[0])
-    .join('')
-    .toUpperCase()
+function EventListSkeleton() {
+  return (
+    <ul className="mt-3 flex flex-col gap-3">
+      {[0, 1].map((i) => (
+        <li
+          key={i}
+          className="h-16 animate-pulse rounded-2xl border border-white/5 bg-white/[0.03]"
+        />
+      ))}
+    </ul>
+  )
+}
+
+function EmptyClubs() {
+  return (
+    <div className="mt-3 flex flex-col items-start gap-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-4 text-sm text-neutral-400">
+      <span>No clubs yet. Be the first.</span>
+      <Link
+        to="/community/clubs/new"
+        className="rounded-full bg-brand-gradient px-3.5 py-1.5 text-xs font-semibold text-white shadow-glow-orange transition active:scale-[0.97]"
+      >
+        Start a club
+      </Link>
+    </div>
+  )
 }
 
 function ChevronRight() {
@@ -289,4 +423,27 @@ function PlusIcon() {
       <path d="M12 5v14M5 12h14" />
     </svg>
   )
+}
+
+function formatEventWhen(startAt: number): string {
+  const d = new Date(startAt)
+  const now = new Date()
+  const sameDay = d.toDateString() === now.toDateString()
+  const withinWeek = d.getTime() - now.getTime() < 7 * 24 * 3600_000
+  if (sameDay) {
+    return `Today · ${d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
+  }
+  if (withinWeek) {
+    return d.toLocaleDateString(undefined, {
+      weekday: 'short',
+      hour: 'numeric',
+      minute: '2-digit',
+    })
+  }
+  return d.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 }
