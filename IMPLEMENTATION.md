@@ -71,18 +71,18 @@ The living map of what exists in this repo and where. **Update this file every t
 
 ## Storage — Dexie + Supabase
 
-- `src/features/storage/db.ts` — Dexie v2: `rides` + `bikes` tables; v2 upgrade backfills `idleDurationMs` + `maxLeanAngleDeg` on pre-existing rides
+- `src/features/storage/db.ts` — Dexie v3: `rides` + `bikes` + `trips` tables. v2 added `bikes` + backfills `idleDurationMs` / `maxLeanAngleDeg` on pre-existing rides; v3 adds the `trips` table and a `tripId` index on `rides` so `where('tripId').equals(id)` is cheap
 - `src/features/storage/rides.ts` — CRUD: `saveRide`, `getRide`, `listRides`, `deleteRide`, `markSynced`
 - `src/features/storage/bikes.ts` — CRUD: `listBikes`, `getBike`, `addBike`, `renameBike`, `deleteBike`, `markBikeSynced`
-- `src/features/storage/sync.ts` — `pushRide`, `pushBike`, `syncUnsyncedRides()`, `pullRemoteRides()`, `pullRemoteBikes()`, `syncWithCloud()`; scoped by Google user's `auth.uid()`. `AuthGate` calls `syncWithCloud()` on sign-in so rides, bikes, and profile totals reconcile across every device signed into the same Google account.
+- `src/features/storage/sync.ts` — `pushRide`, `pushBike`, `pushTrip`, `syncUnsyncedRides()`, `pullRemoteRides()`, `pullRemoteBikes()`, `pullRemoteTrips()`, `syncWithCloud()`; scoped by Google user's `auth.uid()`. `AuthGate` calls `syncWithCloud()` on sign-in so rides, bikes, trips, and profile totals reconcile across every device signed into the same Google account. Trips are pushed before rides so a ride carrying a new `trip_id` references an already-persisted parent row.
 - `src/features/storage/sync.test.ts` — unit tests for pull + two-way sync; mocks Dexie + Supabase + session
 - `src/features/storage/deviceId.ts` — stable device UUID for analytics/debugging
 - `src/features/storage/demoRide.ts` — dev-only seed for a synthetic ride
 
 ## History + Ride detail
 
-- `src/components/HistoryList.tsx` — newest-first ride list; live-queried via dexie-react-hooks; shows ride name + bike chip when present
-- `src/components/RideSummary.tsx` — detail view styled to match the rest of the app (uppercase overline + ride title, rounded-2xl map card with fade-up animation, ShareCard, gradient "Share to Story" button that triggers the 1080×1920 PNG compositor + native share sheet, border-white Delete). Loading and not-found states reuse the same header treatment
+- `src/components/HistoryList.tsx` — newest-first ride list; live-queried via dexie-react-hooks; shows ride name + bike chip + trip badge when present. Top of the screen renders a Trips strip (live-queried `trips` table) with `All trips` / `New` links and a horizontal chip row of the user's trips
+- `src/components/RideSummary.tsx` — detail view styled to match the rest of the app (uppercase overline + ride title, rounded-2xl map card with fade-up animation, ShareCard, `AddToTripSheet` for attach/detach, gradient "Share to Story" button that triggers the 1080×1920 PNG compositor + native share sheet, border-white Delete). Loading and not-found states reuse the same header treatment
 - `src/components/RideMap.tsx` — Leaflet map wrapper
 - `src/components/SpeedGraph.tsx` — SVG speed-over-distance graph; inline + poster layouts for PNG export
 - `src/components/SpeedGraph.test.tsx` — placeholder + render smoke tests
@@ -100,8 +100,9 @@ The living map of what exists in this repo and where. **Update this file every t
 
 ## Share
 
-- `src/features/share/exportPng.ts` — pure-canvas compositor that renders a 1080×1920 Instagram-Story PNG: multiply-tinted CARTO Dark Matter map hero with route halo, brand-gradient wash (orange → magenta → violet), MotoTrack logo + wordmark redrawn from `public/icon-512.svg` paths, ride title in brand gradient, optional bike chip, two hero stat tiles (Distance + Top Speed) with gradient-filled values, and a 3×2 grid of the remaining stats. Awaits `document.fonts.ready` so Space Grotesk / Inter paint correctly. No DOM rasterisation — everything goes through `CanvasRenderingContext2D`
+- `src/features/share/exportPng.ts` — pure-canvas compositor that renders a 1080×1920 Instagram-Story PNG: multiply-tinted CARTO Dark Matter map hero with route halo, brand-gradient wash (orange → magenta → violet), MotoTrack logo + wordmark drawn via `drawLogoTile` + `drawLogoMark` (shared with `exportTripPng.ts`), ride title in brand gradient, optional bike chip, two hero stat tiles (Distance + Top Speed) with gradient-filled values, and a 3×2 grid of the remaining stats. Awaits `document.fonts.ready` so Space Grotesk / Inter paint correctly. No DOM rasterisation — everything goes through `CanvasRenderingContext2D`
 - `src/features/share/exportPng.test.ts` — stubs `fetch` + `createImageBitmap` + `canvas.toBlob` under jsdom; asserts the short-ride guard throws and that the compositor produces an 1080×1920 PNG blob
+- `src/features/share/logoMark.ts` — canvas helpers `drawLogoTile` (ink base + orange/violet ambient glows) and `drawLogoMark` (gradient-stroked M waveform + white-core pink apex pin); must stay visually aligned with `public/icon-512.svg`
 - `src/features/share/projection.ts` — Web Mercator helpers for tile coordinates
 - `src/features/share/share.ts` — web `sharePng()` wrapper (Web Share API with files on iOS 15+/Android Chrome 89+, download fallback). On mobile the share sheet exposes "Add to Instagram Story" / "WhatsApp Status" / etc. directly — no platform-specific code needed
 - `src/components/ShareCard.tsx` — inline stats card shown on the ride summary screen (bike chip, speed graph, 8 stat tiles: distance, duration, moving time, idle time, avg/top speed, max lean, elev gain). Rounded-3xl surface with rounded-2xl tiles and a "Stats" overline. The shareable PNG is composed separately in `exportPng.ts` — ShareCard is now a pure UI surface, not a rasterisation target
@@ -134,10 +135,31 @@ The living map of what exists in this repo and where. **Update this file every t
 - `src/types/club.ts` — `Club`, `ClubMembership`, `ClubEvent`, `RsvpStatus` ('going'|'maybe'|'no'), `EventRsvp`, `ClubAccent` ('sunrise'|'neon'|'ocean'|'aurora'|'ember') + `CLUB_ACCENTS` array for the picker
 - `supabase/community.sql` — creates `public.clubs`, `public.club_members`, `public.club_events`, `public.event_rsvps` with RLS. Trigger-maintained `clubs.member_count` and `club_events.going_count` keep roster counts visible without exposing the member roster. An auto-join trigger on `clubs` makes the creator the first member so the "only members can create events" policy works immediately. Idempotent — safe to re-run. Owner executes it once; instructions in `store/account-setup.md` §7
 
+## Trips — multi-day tours
+
+- `src/types/trip.ts` — `Trip` (`id`, `name`, `coverColor`, `notes`, `createdAt`, `syncedAt`), `TripCover` ('sunrise'|'neon'|'ocean'|'aurora'|'ember') + `TRIP_COVERS` array for the picker
+- `src/features/trips/trips.ts` — local-first CRUD: `listTrips`, `getTrip`, `createTrip`, `updateTrip`, `deleteTrip`, `markTripSynced`, `listRidesForTrip`, `addRideToTrip`, `removeRideFromTrip`. Uses the Dexie `tripId` index so listing a trip's rides is O(matches), not a full scan. `deleteTrip` first detaches every attached ride so a removed trip never leaves dangling refs
+- `src/features/trips/trips.test.ts` — create/update/delete/list with defaults, trimming, syncedAt invalidation, attach/detach, and cascade detach on trip delete
+- `src/features/trips/covers.ts` — `TRIP_COVER_CLASS` (Tailwind `from-…/via-…/to-…` per cover), `TRIP_COVER_LABEL` for a11y, `TRIP_COVER_HEX` for the canvas share compositor
+- `src/features/trips/combineStats.ts` — `combineTripStats(rides)` → sums distance/duration/moving/idle/elevation, takes max of top speed + lean, derives trip-wide avg speed from totals, spans `startedAt`/`endedAt` across the full range
+- `src/features/trips/combineStats.test.ts` — empty trip, sums + maxes, derived avg, span, null-elevation when no ride reports any
+- `src/components/TripsList.tsx` — `/trips` screen; live-queried trip cards with combined day count + distance + moving time
+- `src/components/TripsList.test.tsx` — renders heading, new-trip CTA, per-trip cards with combined stats; mocks Dexie + `useLiveQuery`
+- `src/components/NewTripScreen.tsx` — `/trips/new` screen; name + notes + 5-color cover picker. When invoked with `?rideId=…`, also calls `addRideToTrip` so a rider can create a trip and attach the current ride in one submit
+- `src/components/NewTripScreen.test.tsx` — disabled-submit guard + happy-path create + `?rideId=` attaches the ride
+- `src/components/TripDetailScreen.tsx` — `/trips/:id` screen; gradient trip header, combined `TripMap`, 3×3 combined-stats grid (Distance · Moving · Idle · Elapsed · Avg speed · Top speed · Max lean · Elev gain · Days), Day-by-day list of attached rides with per-day Remove button, "Add rides" CTA that opens `AddRidesToTripSheet`, "Share to Story" + Delete trip. Uses `listRidesForTrip` so rides come back oldest-first (Day 1 / Day 2 / …)
+- `src/components/TripMap.tsx` — Leaflet multi-polyline wrapper; one color per day from an 8-color palette, `fitBounds` across the union of all days, single green start dot on the first ride and single red end dot on the last
+- `src/components/AddToTripSheet.tsx` — inline card on the ride summary. Shows the current trip (with Remove) if attached, otherwise a picker of existing trips + a "New trip" link that deep-links to `/trips/new?rideId=…`. No modal — sits in the page flow
+- `src/components/AddRidesToTripSheet.tsx` — full-screen multi-select modal launched from the trip detail screen; lists the rider's history via `listRides()`, hides rides already in this trip, and disables rides that are attached to a different trip (shows the other trip's name). Sticky "Add N rides" footer calls `addRideToTrip` once per selected ride
+- `src/components/AddRidesToTripSheet.test.tsx` — covers hide-current + disable-other-trip + multi-select happy-path + disabled-until-one-selected + Cancel
+- `src/features/share/exportTripPng.ts` — 1080×1920 Instagram-Story PNG compositor for an entire trip: multi-day route on one map (per-day colors matching `TripMap`), brand overlay tinted by the trip's cover gradient, hero tiles (TOTAL DISTANCE + DAYS / moving time), 2×3 stat grid, date range in the subtitle. Logo drawn via the shared `drawLogoTile` + `drawLogoMark` helpers
+- `src/features/share/exportTripPng.test.ts` — throws when no ride has a route; produces a 1080×1920 PNG blob for a two-day trip; stubs `fetch` + `createImageBitmap` + canvas under jsdom
+- `supabase/trips.sql` — creates `public.trips` with RLS scoped by `auth.uid()` and adds `trip_id` + index on `public.rides` with `ON DELETE SET NULL` so deleting a trip detaches its rides server-side too. Idempotent — safe to re-run. Owner executes it once after `schema.sql`
+
 ## Routing + shell
 
 - `src/main.tsx` — React root; mounts router; registers service worker; starts the auth deep-link listener (`startAuthDeepLinkListener()`)
-- `src/router.tsx` — routes: `/`, `/history`, `/ride/:id`, `/community`, `/community/clubs/new`, `/community/clubs/:id`, `/community/events/new`, `/community/events/:id`, `/profile`, `/auth/callback`, `/privacy`; app routes wrapped in `<AuthGate>`; `/privacy` is intentionally outside the gate so store reviewers can read it without signing in
+- `src/router.tsx` — routes: `/`, `/history`, `/ride/:id`, `/trips`, `/trips/new`, `/trips/:id`, `/community`, `/community/clubs/new`, `/community/clubs/:id`, `/community/events/new`, `/community/events/:id`, `/profile`, `/auth/callback`, `/privacy`; app routes wrapped in `<AuthGate>`; `/privacy` is intentionally outside the gate so store reviewers can read it without signing in
 - `src/components/PrivacyScreen.tsx` — the public privacy policy linked from store listings + the sign-in screen
 - `src/components/PrivacyScreen.test.tsx` — render smoke test
 - `src/App.tsx` — layout: floating `InstallHint` toast + keyed `<Outlet />` wrapped in the `page-enter` transition + persistent `BottomTabBar`
@@ -152,6 +174,7 @@ The living map of what exists in this repo and where. **Update this file every t
 - `supabase/schema.sql` — `public.rides` (with `name` + `bike_id`) and `public.bikes` tables; RLS scoped by `auth.uid()` on both. Idempotent — safe to re-run on existing projects.
 - `supabase/storage.sql` — creates the `avatars` (public) and `documents` (private) Storage buckets and writes RLS policies that scope every object's first path segment to `auth.uid()`. Owner runs it once in the Supabase SQL editor; idempotent on re-run. Instructions are in `store/account-setup.md` §6.
 - `supabase/community.sql` — creates `public.clubs`, `public.club_members`, `public.club_events`, `public.event_rsvps` with RLS + triggers for `member_count`, `going_count`, and autojoining a club's creator. Owner runs it once in the Supabase SQL editor; idempotent on re-run. Instructions are in `store/account-setup.md` §7.
+- `supabase/trips.sql` — creates `public.trips` with RLS and adds `trip_id` + index on `public.rides` (`ON DELETE SET NULL`). Idempotent — safe to re-run. Owner runs it once after `schema.sql`; instructions are in `store/account-setup.md` §7b.
 
 ## Native
 
@@ -164,5 +187,6 @@ The living map of what exists in this repo and where. **Update this file every t
 
 ## Types
 
-- `src/types/ride.ts` — `TrackPoint`, `RideStats` (includes `idleDurationMs`, `maxLeanAngleDeg`), `Ride` (optional `name`, `bikeId`)
+- `src/types/ride.ts` — `TrackPoint`, `RideStats` (includes `idleDurationMs`, `maxLeanAngleDeg`), `Ride` (optional `name`, `bikeId`, `tripId`)
 - `src/types/bike.ts` — `Bike` (`id`, `name`, `createdAt`, `syncedAt`)
+- `src/types/trip.ts` — `Trip` (`id`, `name`, `coverColor`, `notes`, `createdAt`, `syncedAt`), `TripCover`, `TRIP_COVERS`

@@ -1,5 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#0a0a0a"/>
-  <path d="M112 336 L192 176 L256 288 L320 176 L400 336" stroke="#ff4d00" stroke-width="40" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="256" cy="288" r="20" fill="#ff4d00"/>
+  <defs>
+    <linearGradient id="brand" x1="64" y1="64" x2="448" y2="448" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ff4d00"/>
+      <stop offset="55%" stop-color="#ff2d87"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <radialGradient id="glowTL" cx="77" cy="51" r="330" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ff4d00" stop-opacity="0.38"/>
+      <stop offset="100%" stop-color="#ff4d00" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowBR" cx="435" cy="461" r="330" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.36"/>
+      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#07070a"/>
+  <rect width="512" height="512" fill="url(#glowTL)"/>
+  <rect width="512" height="512" fill="url(#glowBR)"/>
+  <path d="M112 340 L192 172 L256 292 L320 172 L400 340"
+        fill="none"
+        stroke="url(#brand)" stroke-width="46"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="256" cy="292" r="22" fill="#ffffff"/>
+  <circle cx="256" cy="292" r="11" fill="#ff2d87"/>
 </svg>

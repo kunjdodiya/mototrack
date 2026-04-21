@@ -15,6 +15,7 @@ import {
 } from '../stats/format'
 import { combineTripStats } from '../trips/combineStats'
 import { TRIP_COVER_HEX } from '../trips/covers'
+import { drawLogoMark, drawLogoTile } from './logoMark'
 
 // Same Instagram Story spec as the single-ride share.
 const CANVAS_W = 1080
@@ -218,44 +219,24 @@ function drawHeaderLogo(ctx: CanvasRenderingContext2D) {
   const logoY = 140
   const logoSize = 88
 
-  roundRect(ctx, logoX, logoY, logoSize, logoSize, 22)
-  ctx.fillStyle = '#0a0a0a'
-  ctx.fill()
-  ctx.lineWidth = 2
-  ctx.strokeStyle = 'rgba(255,255,255,0.12)'
-  ctx.stroke()
-
-  ctx.save()
-  ctx.translate(logoX, logoY)
-  const s = logoSize / 512
-  ctx.scale(s, s)
-  ctx.strokeStyle = '#ff4d00'
-  ctx.lineWidth = 40
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-  ctx.beginPath()
-  ctx.moveTo(112, 336)
-  ctx.lineTo(192, 176)
-  ctx.lineTo(256, 288)
-  ctx.lineTo(320, 176)
-  ctx.lineTo(400, 336)
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.arc(256, 288, 20, 0, Math.PI * 2)
-  ctx.fillStyle = '#ff4d00'
-  ctx.fill()
-  ctx.restore()
+  drawLogoTile(ctx, logoX, logoY, logoSize)
+  drawLogoMark(ctx, logoX, logoY, logoSize)
 
   const textX = logoX + logoSize + 22
+  const motoY = logoY + logoSize / 2 - 4
   ctx.textBaseline = 'middle'
   ctx.textAlign = 'left'
   ctx.font =
     '700 52px "Space Grotesk", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-  ctx.fillStyle = '#ff4d00'
-  ctx.fillText('Moto', textX, logoY + logoSize / 2 - 4)
+  const motoGrad = ctx.createLinearGradient(textX, motoY - 24, textX + 240, motoY + 24)
+  motoGrad.addColorStop(0, '#ff4d00')
+  motoGrad.addColorStop(0.55, '#ff2d87')
+  motoGrad.addColorStop(1, '#7c3aed')
+  ctx.fillStyle = motoGrad
+  ctx.fillText('Moto', textX, motoY)
   const motoWidth = ctx.measureText('Moto').width
   ctx.fillStyle = '#ffffff'
-  ctx.fillText('Track', textX + motoWidth, logoY + logoSize / 2 - 4)
+  ctx.fillText('Track', textX + motoWidth, motoY)
 
   ctx.font =
     '600 22px "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'

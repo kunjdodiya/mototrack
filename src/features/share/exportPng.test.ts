@@ -114,7 +114,7 @@ describe('renderSharePng', () => {
     )
   })
 
-  it('produces a PNG blob sized for Instagram Stories (1080×1920)', async () => {
+  it('produces a PNG blob sized for Instagram Stories at 2× physical pixels', async () => {
     const createElementSpy = vi.spyOn(document, 'createElement')
     const ride = makeRide(50)
 
@@ -123,13 +123,15 @@ describe('renderSharePng', () => {
     expect(blob).toBeInstanceOf(Blob)
     expect(blob.type).toBe('image/png')
 
+    // Layout is designed in 1080×1920 logical units; the file is rendered at
+    // 2160×3840 physical for sharper text / tiles when Instagram downscales.
     const canvases = createElementSpy.mock.results
       .map((r) => r.value as HTMLElement)
       .filter(
         (el): el is HTMLCanvasElement => el instanceof HTMLCanvasElement,
       )
     const storyCanvas = canvases.find(
-      (c) => c.width === 1080 && c.height === 1920,
+      (c) => c.width === 2160 && c.height === 3840,
     )
     expect(storyCanvas).toBeDefined()
   })

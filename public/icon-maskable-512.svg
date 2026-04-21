@@ -1,6 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <!-- Safe zone padded for Android adaptive icon masks (80% centre zone). -->
-  <rect width="512" height="512" fill="#0a0a0a"/>
-  <path d="M148 320 L212 192 L256 272 L300 192 L364 320" stroke="#ff4d00" stroke-width="30" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="256" cy="272" r="14" fill="#ff4d00"/>
+  <defs>
+    <linearGradient id="brand" x1="128" y1="128" x2="384" y2="384" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ff4d00"/>
+      <stop offset="55%" stop-color="#ff2d87"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="#07070a"/>
+  <path d="M148 324 L212 192 L256 276 L300 192 L364 324"
+        fill="none"
+        stroke="url(#brand)" stroke-width="34"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="256" cy="276" r="16" fill="#ffffff"/>
+  <circle cx="256" cy="276" r="8" fill="#ff2d87"/>
 </svg>
