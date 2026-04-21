@@ -63,13 +63,15 @@ Then in Android Studio: **Build → Generate Signed App Bundle / APK → Android
 
 In your Supabase dashboard → Authentication → URL Configuration:
 
-- Add `com.kunjdodiya.mototrack://auth/callback` to **Redirect URLs** (alongside `https://mototrack.pages.dev/auth/callback` which is already there for web)
+- Add `com.kunjdodiya.mototrack://auth/callback` to **Redirect URLs** (alongside `https://mototrack.pages.dev/**` which is already there for web)
 
-In Google Cloud Console → APIs & Services → Credentials → your OAuth client:
+That's it. **Do NOT add the `com.kunjdodiya.mototrack://...` URL to Google Cloud Console** — Google never sees the custom scheme. The OAuth flow is:
 
-- Add `com.kunjdodiya.mototrack://auth/callback` to **Authorized redirect URIs**
+1. App opens browser → `accounts.google.com` (Google's `redirect_uri` is Supabase's callback, e.g. `https://<project>.supabase.co/auth/v1/callback`, which is already wired)
+2. Google redirects to Supabase
+3. **Supabase** redirects to `com.kunjdodiya.mototrack://auth/callback` — and Supabase is the one that validates this URL against the allow-list above.
 
-Without these two entries, the native Google sign-in flow will fail with "redirect_uri_mismatch".
+Google would actually reject a `com.kunjdodiya.mototrack://...` entry on a "Web application" OAuth client (custom schemes are only valid on iOS/Android client types, which we don't need for this PKCE flow).
 
 ## 7. Apple-specific: distribution certificate + provisioning profile
 
