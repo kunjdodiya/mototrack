@@ -22,6 +22,7 @@ import {
 } from '../features/stats/format'
 import TripMap from './TripMap'
 import BackLink from './BackLink'
+import AddRidesToTripSheet from './AddRidesToTripSheet'
 
 type LoadState = 'loading' | 'ready' | 'not-found'
 
@@ -34,6 +35,7 @@ export default function TripDetailScreen() {
   const [rides, setRides] = useState<Ride[]>([])
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [picking, setPicking] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -195,18 +197,36 @@ export default function TripDetailScreen() {
           <h2 className="font-display text-lg font-bold tracking-tight">
             Day by day
           </h2>
-          {rides.length > 0 && (
-            <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-500">
-              {rides.length} ride{rides.length === 1 ? '' : 's'}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {rides.length > 0 && (
+              <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-500">
+                {rides.length} ride{rides.length === 1 ? '' : 's'}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setPicking(true)}
+              className="inline-flex items-center gap-1 rounded-full bg-brand-gradient px-3 py-1.5 text-xs font-bold text-white shadow-glow-orange transition active:scale-[0.97]"
+            >
+              <PlusIcon />
+              Add rides
+            </button>
+          </div>
         </div>
 
         {rides.length === 0 ? (
-          <p className="mt-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-4 text-sm text-neutral-400">
-            Head to a ride in your history and tap "Add to trip" to attach it
-            here.
-          </p>
+          <div className="mt-3 flex flex-col gap-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-4">
+            <p className="text-sm text-neutral-400">
+              Pull rides out of your history to build this trip.
+            </p>
+            <button
+              type="button"
+              onClick={() => setPicking(true)}
+              className="self-start rounded-full bg-brand-gradient px-4 py-2 text-xs font-bold text-white shadow-glow-orange transition active:scale-[0.97]"
+            >
+              Add rides from history
+            </button>
+          </div>
         ) : (
           <ul className="mt-3 flex flex-col gap-3">
             {rides.map((r, i) => (
@@ -277,7 +297,32 @@ export default function TripDetailScreen() {
           Export failed: {exportError}
         </p>
       )}
+
+      {picking && (
+        <AddRidesToTripSheet
+          tripId={trip.id}
+          onClose={() => setPicking(false)}
+          onAdded={() => void reloadRides()}
+        />
+      )}
     </div>
+  )
+}
+
+function PlusIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-3.5 w-3.5"
+      aria-hidden
+    >
+      <path d="M12 5v14M5 12h14" />
+    </svg>
   )
 }
 
