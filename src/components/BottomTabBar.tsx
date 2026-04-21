@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
 type Tab = {
@@ -15,13 +15,32 @@ const tabs: Tab[] = [
   { to: '/profile', label: 'My Profile', icon: <ProfileIcon /> },
 ]
 
+function matchesTab(pathname: string, tab: Tab): boolean {
+  if (tab.end) return pathname === tab.to
+  return pathname === tab.to || pathname.startsWith(tab.to + '/')
+}
+
 export default function BottomTabBar() {
+  const { pathname } = useLocation()
+  const activeIndex = tabs.findIndex((t) => matchesTab(pathname, t))
+  const cellPercent = 100 / tabs.length
+  const pillLeft = `calc(${Math.max(activeIndex, 0) * cellPercent}% + 0.25rem)`
+  const pillWidth = `calc(${cellPercent}% - 0.5rem)`
+
   return (
     <nav
       aria-label="Primary"
       className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-[max(env(safe-area-inset-bottom),12px)] pt-2"
     >
-      <div className="glass-strong pointer-events-auto flex w-full max-w-xl items-stretch justify-between gap-1 rounded-2xl px-2 py-2 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)]">
+      <div className="glass-strong pointer-events-auto relative grid w-full max-w-xl grid-cols-4 rounded-2xl p-1 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)]">
+        <span
+          aria-hidden
+          className={[
+            'pointer-events-none absolute inset-y-1 rounded-xl bg-brand-gradient shadow-tab-active transition-all duration-500 ease-out',
+            activeIndex < 0 ? 'opacity-0' : 'opacity-100',
+          ].join(' ')}
+          style={{ left: pillLeft, width: pillWidth }}
+        />
         {tabs.map((tab) => (
           <NavLink
             key={tab.to}
@@ -29,43 +48,22 @@ export default function BottomTabBar() {
             end={tab.end}
             className={({ isActive }) =>
               [
-                'group relative flex flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-semibold tracking-tight transition-all duration-300 ease-out',
-                'active:scale-[0.94]',
-                isActive
-                  ? 'text-white'
-                  : 'text-neutral-400 hover:text-neutral-200',
+                'relative z-10 flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-semibold tracking-tight transition-colors duration-300 active:scale-[0.94]',
+                isActive ? 'text-white' : 'text-neutral-400',
               ].join(' ')
             }
           >
             {({ isActive }) => (
               <>
                 <span
-                  aria-hidden
                   className={[
-                    'absolute inset-0 rounded-xl transition-all duration-500 ease-out',
-                    isActive
-                      ? 'bg-brand-gradient opacity-100 shadow-tab-active'
-                      : 'opacity-0',
-                  ].join(' ')}
-                />
-                <span
-                  aria-hidden
-                  className={[
-                    'absolute inset-0 rounded-xl transition-opacity duration-300',
-                    isActive
-                      ? 'opacity-0'
-                      : 'opacity-0 group-hover:opacity-100 bg-white/5',
-                  ].join(' ')}
-                />
-                <span
-                  className={[
-                    'relative z-10 flex h-5 w-5 items-center justify-center transition-transform duration-500 ease-out',
+                    'flex h-5 w-5 items-center justify-center transition-transform duration-500 ease-out',
                     isActive ? 'scale-110' : 'scale-100',
                   ].join(' ')}
                 >
                   {tab.icon}
                 </span>
-                <span className="relative z-10 leading-none">{tab.label}</span>
+                <span className="leading-none">{tab.label}</span>
               </>
             )}
           </NavLink>
