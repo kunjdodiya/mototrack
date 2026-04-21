@@ -111,7 +111,7 @@ The living map of what exists in this repo and where. **Update this file every t
 
 ## Community — clubs + ride hosting (preview)
 
-- `src/components/CommunityScreen.tsx` — two-tab screen (Clubs / Host) with an animated gradient pill indicator. Clubs panel lists featured motorcycle clubs + upcoming rides; Host panel promotes "Create a ride" with route-planner / RSVPs / meet-up-chat / event-page teasers. Data is placeholder until a `clubs` + `club_events` schema ships
+- `src/components/CommunityScreen.tsx` — two-tab screen (Clubs / Host) with an animated gradient pill indicator; Host is the default tab. Clubs panel lists featured motorcycle clubs + upcoming rides; Host panel promotes "Create a ride" with route-planner / RSVPs / meet-up-chat / event-page teasers. Data is placeholder until a `clubs` + `club_events` schema ships
 - `src/components/CommunityScreen.test.tsx` — heading + tab-switch smoke test
 
 ## Routing + shell
