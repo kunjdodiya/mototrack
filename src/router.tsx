@@ -4,6 +4,7 @@ import RecordScreen from './components/RecordScreen'
 import HistoryList from './components/HistoryList'
 import RideSummary from './components/RideSummary'
 import ProfileScreen from './components/ProfileScreen'
+import CommunityScreen from './components/CommunityScreen'
 import AuthCallback from './components/AuthCallback'
 import PrivacyScreen from './components/PrivacyScreen'
 import AuthGate from './features/auth/AuthGate'
@@ -25,6 +26,7 @@ export const router = createBrowserRouter([
       { index: true, element: <RecordScreen /> },
       { path: 'history', element: <HistoryList /> },
       { path: 'ride/:id', element: <RideSummary /> },
+      { path: 'community', element: <CommunityScreen /> },
       { path: 'profile', element: <ProfileScreen /> },
     ],
   },

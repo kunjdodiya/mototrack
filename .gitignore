@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 .supabase-secrets.local
 .env.local
+
+# Claude Code agent harness (worktrees, session state)
+.claude/

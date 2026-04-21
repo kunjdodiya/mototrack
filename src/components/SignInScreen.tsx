@@ -18,10 +18,19 @@ export default function SignInScreen() {
   }
 
   return (
-    <div className="flex min-h-full flex-col items-center justify-center gap-10 px-6 py-10">
-      <div className="text-center">
-        <h1 className="text-4xl font-semibold tracking-tight">
-          <span className="text-moto-orange">Moto</span>Track
+    <div className="relative flex min-h-full flex-col items-center justify-center gap-10 overflow-hidden px-6 py-10">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-brand-gradient opacity-30 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute bottom-0 right-0 h-80 w-80 rounded-full bg-moto-violet/30 blur-3xl"
+      />
+
+      <div className="relative animate-fade-up text-center">
+        <h1 className="font-display text-5xl font-bold tracking-tight">
+          <span className="text-gradient">Moto</span>Track
         </h1>
         <p className="mt-3 text-neutral-400">
           Record every ride. Keep every route.
@@ -32,26 +41,26 @@ export default function SignInScreen() {
         type="button"
         onClick={() => void handleClick()}
         disabled={busy}
-        className="flex items-center gap-3 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-neutral-900 shadow transition active:scale-[0.98] disabled:opacity-60"
+        className="relative flex animate-scale-in items-center gap-3 rounded-2xl bg-white px-5 py-3.5 text-sm font-semibold text-neutral-900 shadow-[0_20px_60px_-15px_rgba(255,255,255,0.3)] transition active:scale-[0.98] disabled:opacity-60"
       >
         <GoogleG />
         {busy ? 'Opening Google…' : 'Continue with Google'}
       </button>
 
       {error && (
-        <p role="alert" className="max-w-sm text-center text-sm text-red-400">
+        <p role="alert" className="relative max-w-sm text-center text-sm text-red-400">
           {error}
         </p>
       )}
 
-      <p className="max-w-sm text-center text-xs text-neutral-500">
+      <p className="relative max-w-sm text-center text-xs text-neutral-500">
         We use your Google account only to save your rides to your personal
         cloud. No email, no spam.
       </p>
 
       <Link
         to="/privacy"
-        className="text-xs text-neutral-500 underline hover:text-neutral-300"
+        className="relative text-xs text-neutral-500 underline transition hover:text-neutral-300"
       >
         Privacy Policy
       </Link>

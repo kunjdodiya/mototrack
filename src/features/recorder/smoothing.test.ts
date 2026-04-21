@@ -15,33 +15,44 @@ function pt(overrides: Partial<TrackPoint> = {}): TrackPoint {
 }
 
 describe('shouldAcceptPoint', () => {
-  it('accepts the first point', () => {
+  it('accepts the first point regardless of accuracy', () => {
     expect(shouldAcceptPoint(pt(), null).accept).toBe(true)
+    expect(shouldAcceptPoint(pt({ acc: 500 }), null).accept).toBe(true)
   })
 
-  it('rejects very inaccurate fixes', () => {
-    const d = shouldAcceptPoint(pt({ acc: 100 }), null)
-    expect(d.accept).toBe(false)
+  it('accepts a moderately inaccurate fix (<=100m) when moved >5m', () => {
+    const prev = pt({ lat: 19.076, lng: 72.8777, acc: 10 })
+    const next = pt({ lat: 19.0765, lng: 72.8777, acc: 80 })
+    expect(shouldAcceptPoint(next, prev).accept).toBe(true)
   })
 
   it('rejects jitter when less than 5m from the previous point', () => {
     const prev = pt({ lat: 19.076, lng: 72.8777 })
     const next = pt({ lat: 19.076001, lng: 72.8777 })
-    const d = shouldAcceptPoint(next, prev)
-    expect(d.accept).toBe(false)
+    expect(shouldAcceptPoint(next, prev).accept).toBe(false)
   })
 
-  it('accepts real movement above 5m', () => {
+  it('accepts real movement above 5m with good accuracy', () => {
     const prev = pt({ lat: 19.076, lng: 72.8777 })
     const next = pt({ lat: 19.0765, lng: 72.8777 })
-    const d = shouldAcceptPoint(next, prev)
-    expect(d.accept).toBe(true)
+    expect(shouldAcceptPoint(next, prev).accept).toBe(true)
+  })
+
+  it('accepts very inaccurate fix when the user clearly moved >25m', () => {
+    const prev = pt({ lat: 19.076, lng: 72.8777, acc: 20 })
+    const next = pt({ lat: 19.077, lng: 72.8777, acc: 400 })
+    expect(shouldAcceptPoint(next, prev).accept).toBe(true)
+  })
+
+  it('rejects low-accuracy fix that barely moved (looks like cell-tower drift)', () => {
+    const prev = pt({ lat: 19.076, lng: 72.8777, acc: 20 })
+    const next = pt({ lat: 19.07609, lng: 72.8777, acc: 250 })
+    expect(shouldAcceptPoint(next, prev).accept).toBe(false)
   })
 
   it('rejects an accuracy collapse when barely moving', () => {
     const prev = pt({ lat: 19.076, lng: 72.8777, acc: 5 })
     const next = pt({ lat: 19.07605, lng: 72.8777, acc: 25 })
-    const d = shouldAcceptPoint(next, prev)
-    expect(d.accept).toBe(false)
+    expect(shouldAcceptPoint(next, prev).accept).toBe(false)
   })
 })

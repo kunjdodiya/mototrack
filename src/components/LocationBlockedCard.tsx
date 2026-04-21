@@ -20,23 +20,25 @@ export default function LocationBlockedCard({ onRetry }: Props) {
 
       {iosSafari ? (
         <div className="mt-4 space-y-3 text-sm text-amber-100">
-          <p className="font-semibold">On your iPhone:</p>
+          <p className="font-semibold">On your iPhone, do all three:</p>
           <ol className="list-decimal space-y-1.5 pl-5">
             <li>
-              Tap the <strong>aA</strong> icon on the left side of Safari's
-              address bar.
+              Open <strong>Settings → Safari → Location</strong> and set it to
+              <strong> Ask</strong> (not Deny).
             </li>
             <li>
-              Tap <strong>Website Settings</strong>.
+              Back in Safari, tap the <strong>aA</strong> icon in the address
+              bar → <strong>Website Settings</strong> → set{' '}
+              <strong>Location</strong> to <strong>Allow</strong>.
             </li>
             <li>
-              Set <strong>Location</strong> to <strong>Allow</strong>.
+              Tap <strong>Try again</strong> below — the page will reload and
+              ask for location again.
             </li>
-            <li>Come back to this tab and tap Try again below.</li>
           </ol>
           <p className="pt-2 text-xs text-amber-200/80">
-            If that doesn't work: open Settings → Safari → Location → Ask, then
-            reload this page.
+            Safari keeps blocking GPS for this page until it reloads, even
+            after you change the setting — that's why Try again reloads.
           </p>
         </div>
       ) : (

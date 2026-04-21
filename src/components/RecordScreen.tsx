@@ -55,48 +55,55 @@ export default function RecordScreen() {
 
   if (error?.kind === 'permission-denied') {
     return (
-      <div className="mx-auto flex h-full max-w-xl flex-col items-center justify-center p-6">
+      <div className="mx-auto flex min-h-full max-w-xl flex-col items-center justify-center p-6">
         <LocationBlockedCard onRetry={handleRetry} />
       </div>
     )
   }
 
   return (
-    <div className="mx-auto flex h-full max-w-xl flex-col gap-6 p-6">
+    <div className="mx-auto flex max-w-xl flex-col gap-6 px-5 pb-6 pt-8">
       {idle ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">
-              Ready to ride?
+        <>
+          <header className="flex flex-col gap-2">
+            <span className="text-xs font-semibold uppercase tracking-[0.22em] text-neutral-500">
+              Ride Now
+            </span>
+            <h1 className="font-display text-4xl font-bold leading-tight">
+              Ready to <span className="text-gradient">roll</span>?
             </h1>
-            <p className="mt-2 text-neutral-400">
+            <p className="text-sm text-neutral-400">
               {isNative
-                ? "Tap Start and ride. We'll track your route in the background."
-                : "Tap Start, keep the screen on, and ride. We'll track your route."}
+                ? "Tap Start and ride — tracking runs in the background."
+                : 'Tap Start, keep the screen on, and ride.'}
             </p>
-          </div>
+          </header>
 
-          <div className="flex w-full flex-col gap-3 text-left">
-            <label className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-              Ride name
+          <div className="flex flex-col gap-3">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
+                Ride name
+              </span>
               <input
                 type="text"
                 value={rideName}
                 onChange={(e) => setRideName(e.target.value)}
                 placeholder="Sunday morning twisties"
                 maxLength={60}
-                className="mt-1 block w-full rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-base font-medium text-white placeholder:text-neutral-600 focus:border-moto-orange focus:outline-none"
+                className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3.5 text-base font-medium text-white placeholder:text-neutral-600 transition focus:border-moto-orange/60 focus:bg-white/[0.05] focus:outline-none"
               />
             </label>
 
-            <label className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-              Bike
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
+                Bike
+              </span>
               {bikes.length === 0 ? (
-                <div className="mt-1 flex items-center justify-between gap-2 rounded-xl border border-dashed border-neutral-800 bg-neutral-950 px-4 py-3 text-sm text-neutral-400">
+                <div className="flex items-center justify-between gap-2 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-3.5 text-sm text-neutral-400">
                   <span>No bikes yet.</span>
                   <Link
                     to="/profile"
-                    className="font-semibold text-moto-orange hover:underline"
+                    className="font-semibold text-gradient hover:opacity-80"
                   >
                     Add one →
                   </Link>
@@ -105,7 +112,7 @@ export default function RecordScreen() {
                 <select
                   value={selectedBikeId}
                   onChange={(e) => setSelectedBikeId(e.target.value)}
-                  className="mt-1 block w-full rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-base font-medium text-white focus:border-moto-orange focus:outline-none"
+                  className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3.5 text-base font-medium text-white transition focus:border-moto-orange/60 focus:bg-white/[0.05] focus:outline-none"
                 >
                   <option value="">— none —</option>
                   {bikes.map((b) => (
@@ -118,42 +125,72 @@ export default function RecordScreen() {
             </label>
           </div>
 
-          <button
-            type="button"
-            onClick={handleStart}
-            className="h-40 w-40 rounded-full bg-moto-orange text-xl font-semibold tracking-tight text-white shadow-lg shadow-moto-orange/30 transition active:scale-95"
-          >
-            Start
-          </button>
+          <div className="flex animate-scale-in flex-col items-center justify-center gap-3 pt-4">
+            <button
+              type="button"
+              onClick={handleStart}
+              aria-label="Start ride"
+              className="group relative flex h-44 w-44 items-center justify-center rounded-full bg-brand-gradient text-xl font-display font-bold tracking-tight text-white shadow-glow-orange transition-transform duration-200 active:scale-95"
+            >
+              <span
+                aria-hidden
+                className="absolute inset-0 animate-pulse-ring rounded-full bg-brand-gradient"
+              />
+              <span
+                aria-hidden
+                className="absolute inset-0 rounded-full bg-white/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+              />
+              <span className="relative">Start</span>
+            </button>
+            <p className="text-xs text-neutral-500">Hold the line. Go.</p>
+          </div>
+
           {error && (
-            <p className="text-sm text-red-400">GPS error: {error.message}</p>
+            <p className="text-center text-sm text-red-400">
+              GPS error: {error.message}
+            </p>
           )}
-        </div>
+        </>
       ) : (
         <>
           {!isNative && (
-            <div className="rounded-xl bg-amber-950/60 border border-amber-900 px-3 py-2 text-xs text-amber-200">
-              Keep screen on and app open. Auto-lock is disabled. For true
-              background tracking, install the native app.
+            <div className="animate-fade-up rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
+              Keep screen on and app open. Auto-lock is disabled. Install the
+              native app for true background tracking.
             </div>
           )}
 
-          <LiveStats />
-
-          <div className="h-64">
-            <RideMap points={points} follow className="h-full overflow-hidden rounded-xl border border-neutral-800 bg-neutral-950" />
+          <div className="animate-fade-up">
+            <LiveStats />
           </div>
 
-          <div className="text-center text-xs text-neutral-500">
-            {pointCount} GPS fixes · {paused ? 'paused' : 'recording'}
+          <div className="h-64 animate-fade-up overflow-hidden rounded-2xl border border-white/5 shadow-lg">
+            <RideMap
+              points={points}
+              follow
+              className="h-full bg-neutral-950"
+            />
           </div>
 
-          <div className="mt-auto grid grid-cols-2 gap-3">
+          <div className="flex items-center justify-center gap-2 text-xs text-neutral-500">
+            <span
+              aria-hidden
+              className={[
+                'h-2 w-2 rounded-full',
+                paused ? 'bg-amber-400' : 'bg-emerald-400 animate-pulse',
+              ].join(' ')}
+            />
+            <span>
+              {pointCount} GPS fixes · {paused ? 'paused' : 'recording'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             {recording && (
               <button
                 type="button"
                 onClick={pause}
-                className="rounded-xl bg-neutral-800 py-4 text-base font-semibold text-white transition active:scale-[0.98]"
+                className="rounded-2xl border border-white/10 bg-white/[0.04] py-4 text-base font-semibold text-white transition active:scale-[0.98] hover:bg-white/[0.08]"
               >
                 Pause
               </button>
@@ -162,7 +199,7 @@ export default function RecordScreen() {
               <button
                 type="button"
                 onClick={resume}
-                className="rounded-xl bg-moto-orange py-4 text-base font-semibold text-white transition active:scale-[0.98]"
+                className="rounded-2xl bg-brand-gradient py-4 text-base font-semibold text-white shadow-glow-orange transition active:scale-[0.98]"
               >
                 Resume
               </button>
@@ -171,7 +208,7 @@ export default function RecordScreen() {
               type="button"
               onClick={() => void handleStop()}
               disabled={saving}
-              className="rounded-xl bg-red-600 py-4 text-base font-semibold text-white transition active:scale-[0.98] disabled:opacity-60"
+              className="rounded-2xl bg-red-600 py-4 text-base font-semibold text-white shadow-[0_10px_40px_-10px_rgba(220,38,38,0.6)] transition active:scale-[0.98] disabled:opacity-60"
             >
               {saving ? 'Saving…' : 'Stop'}
             </button>
