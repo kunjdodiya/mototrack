@@ -42,7 +42,7 @@ const upcomingEvents = [
 ]
 
 export default function CommunityScreen() {
-  const [tab, setTab] = useState<Tab>('clubs')
+  const [tab, setTab] = useState<Tab>('host')
 
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-6 px-5 pb-10 pt-8">

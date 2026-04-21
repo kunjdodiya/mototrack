@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useRecorder } from '../features/recorder/useRecorder'
 import { db } from '../features/storage/db'
+import { addBike } from '../features/storage/bikes'
+import { pushBike } from '../features/storage/sync'
 import LiveStats from './LiveStats'
 import RideMap from './RideMap'
 import LocationBlockedCard from './LocationBlockedCard'
@@ -26,6 +28,22 @@ export default function RecordScreen() {
 
   const [rideName, setRideName] = useState('')
   const [selectedBikeId, setSelectedBikeId] = useState<string>('')
+  const [newBike, setNewBike] = useState('')
+  const [addingBike, setAddingBike] = useState(false)
+
+  const handleAddBike = async () => {
+    const name = newBike.trim()
+    if (!name) return
+    setAddingBike(true)
+    try {
+      const bike = await addBike(name)
+      setNewBike('')
+      setSelectedBikeId(bike.id)
+      void pushBike(bike)
+    } finally {
+      setAddingBike(false)
+    }
+  }
 
   const idle = status === 'idle'
   const recording = status === 'recording'
@@ -88,7 +106,7 @@ export default function RecordScreen() {
                 type="text"
                 value={rideName}
                 onChange={(e) => setRideName(e.target.value)}
-                placeholder="Sunday morning twisties"
+                placeholder="E.g. Sunday morning twisties"
                 maxLength={60}
                 className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3.5 text-base font-medium text-white placeholder:text-neutral-600 transition focus:border-moto-orange/60 focus:bg-white/[0.05] focus:outline-none"
               />
@@ -99,14 +117,29 @@ export default function RecordScreen() {
                 Bike
               </span>
               {bikes.length === 0 ? (
-                <div className="flex items-center justify-between gap-2 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-3.5 text-sm text-neutral-400">
-                  <span>No bikes yet.</span>
-                  <Link
-                    to="/profile"
-                    className="font-semibold text-gradient hover:opacity-80"
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newBike}
+                    onChange={(e) => setNewBike(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        void handleAddBike()
+                      }
+                    }}
+                    placeholder="E.g. KTM 390 Duke"
+                    maxLength={40}
+                    className="flex-1 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3.5 text-base font-medium text-white placeholder:text-neutral-600 transition focus:border-moto-orange/60 focus:bg-white/[0.05] focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleAddBike()}
+                    disabled={addingBike || !newBike.trim()}
+                    className="rounded-2xl bg-brand-gradient px-5 py-3.5 font-display font-semibold tracking-tight text-white shadow-glow-orange transition active:scale-[0.98] disabled:opacity-40"
                   >
-                    Add one →
-                  </Link>
+                    Add
+                  </button>
                 </div>
               ) : (
                 <select
@@ -114,7 +147,7 @@ export default function RecordScreen() {
                   onChange={(e) => setSelectedBikeId(e.target.value)}
                   className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3.5 text-base font-medium text-white transition focus:border-moto-orange/60 focus:bg-white/[0.05] focus:outline-none"
                 >
-                  <option value="">— none —</option>
+                  <option value="">Select</option>
                   {bikes.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.name}
