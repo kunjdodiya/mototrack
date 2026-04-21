@@ -80,7 +80,16 @@ That's it. **Do NOT add the `com.kunjdodiya.mototrack://...` URL to Google Cloud
 
 Google would actually reject a `com.kunjdodiya.mototrack://...` entry on a "Web application" OAuth client (custom schemes are only valid on iOS/Android client types, which we don't need for this PKCE flow).
 
-## 7. Apple-specific: distribution certificate + provisioning profile
+## 7. Community tables (clubs, events, RSVPs)
+
+The Community tab (clubs + ride hosting + RSVPs) needs four tables + RLS:
+
+1. Dashboard → **SQL Editor** → New query → paste the contents of [`supabase/community.sql`](../supabase/community.sql) → Run.
+2. Idempotent — safe to re-run when schema changes ship. Creates `public.clubs`, `public.club_members`, `public.club_events`, `public.event_rsvps` with RLS policies that open read-access to any signed-in user (needed for discovery and attendee counts) and scope writes to the signed-in rider. Triggers maintain `clubs.member_count` and `club_events.going_count` automatically.
+
+No extra dashboard UI to click. Once the script runs, riders can create a club, invite friends to join, host rides inside their clubs, and RSVP — all from the Community tab.
+
+## 8. Apple-specific: distribution certificate + provisioning profile
 
 Xcode handles most of this automatically once your Apple ID is part of the Developer Program:
 
@@ -91,14 +100,14 @@ Xcode handles most of this automatically once your Apple ID is part of the Devel
 
 Xcode will create the cert + profile and complain about anything missing.
 
-## 8. Apple-specific: capabilities
+## 9. Apple-specific: capabilities
 
 In Xcode → Signing & Capabilities → "+ Capability":
 - Background Modes → tick **Location updates**
 
 (Already declared in `Info.plist`, but Xcode also needs the entitlement.)
 
-## 9. Optional but recommended: TestFlight + Play internal testing
+## 10. Optional but recommended: TestFlight + Play internal testing
 
 Don't go straight to public release. Both stores let you push the build to a small group of testers (you, your friends) without going through review. Validate that:
 - The OAuth flow really completes on a real device

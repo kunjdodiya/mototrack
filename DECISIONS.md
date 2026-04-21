@@ -154,3 +154,27 @@ RLS uses `(storage.foldername(name))[1] = auth.uid()::text` so a user can only t
 **Decision:** Replace the `<App>` top-header layout with a floating glass `BottomTabBar` pinned to `env(safe-area-inset-bottom)` and four persistent tabs with animated gradient pill indicators. `App.tsx` keeps its `InstallHint` toast + `<Outlet />` and re-keys `<main>` on `location.pathname` so every route transition triggers a `page-enter` animation. Sign Out moves inside `ProfileScreen`. A new `/community` route renders `CommunityScreen`, which is labelled as a preview — the clubs and hosting data are placeholder until the backend schema for clubs/events ships. Design tokens live in `tailwind.config.js` (`brand-gradient`, `moto-mesh`, `Space Grotesk` display font, `animate-pulse-ring` / `animate-fade-up`) and a mesh-gradient body background in `index.css`; `@media (prefers-reduced-motion)` disables animations.
 
 **Consequences:** All primary navigation is reachable by thumb; looks and feels like a native app shell on both platforms. Adding a fifth top-level destination requires a new entry in `BottomTabBar` *and* a new route. Community is a shell only — the next iteration needs a `clubs` + `club_events` schema with RLS and a join/leave flow; until then the chips and cards render static data so the tab doesn't feel empty. Page transitions are CSS-only (no `framer-motion`) to keep the bundle flat and respect motion preferences automatically.
+
+## 2026-04-21 — Community MVP: clubs, open-join memberships, in-club events, one-tap RSVP
+
+**Context:** The previous Community tab was a shell with placeholder data. Owner approved building the MVP: four Postgres entities (clubs, memberships, events, RSVPs), two-tap join, in-club event hosting, text-only meet-points (no route planner), no chat, no approval-gated joining.
+
+**Decision:** Add `supabase/community.sql` with four RLS-scoped tables:
+
+- `clubs` — read by any authenticated user (so discovery works), insert by any authenticated user (with `created_by = auth.uid()`), update/delete only by the owner. A denormalised `member_count` column is maintained by trigger so the browse list can sort by popularity without exposing the member roster.
+- `club_members` — row read is scoped to `user_id = auth.uid()` (you only see your own memberships). Self-join via insert, self-leave via delete, club owner can also remove. We deliberately never expose per-club rosters in MVP to avoid leaking `auth.users.id`s.
+- `club_events` — read by any authenticated user (enables cross-club discovery). Insert gated by a subquery against `club_members` (only members of the parent club can create events). Update/delete restricted to the event creator or the club owner.
+- `event_rsvps` — read by any authenticated user (so the app can show attendee totals without leaning on the trigger-maintained counter). Write restricted to `user_id = auth.uid()`. A trigger maintains `club_events.going_count` on inserts, deletes, and status transitions across the `going` boundary.
+
+An auto-join trigger on `clubs` makes the creator the first member the moment a club is inserted, which keeps the "only members can create events" policy satisfiable without a second client round-trip.
+
+Client-side: `src/features/community/{clubs,events,accents}.ts` expose a thin typed layer over the RPCs, and the data comes live from the Community screens — no Dexie cache. Social data is not ride-critical and needs real-time consistency; the local-first rule in `AGENTS.md` still applies to *rides*, not the social graph. The `CommunityScreen` now drives real Clubs/Host panels; four new screens (`NewClubScreen`, `ClubDetailScreen`, `NewEventScreen`, `EventDetailScreen`) handle the create/detail/RSVP flows. A shared `BackLink` chip keeps the back-affordance consistent inside the bottom-tab shell.
+
+Explicit MVP scope cuts (deferred, filed separately):
+- No chat / comments.
+- No route planner. Events carry a single `meet_label` text plus optional `meet_lat`/`meet_lng` columns reserved for a later map-picker.
+- No invite links / private clubs / approval-gated joining (open-join only).
+- No push notifications.
+- No distance-based discovery (city string only; no geocoding).
+
+**Consequences:** Anyone signed in can browse clubs, join with one tap, host rides inside their clubs, and RSVP. The `member_count` / `going_count` triggers keep listings cheap (no per-row aggregate queries) at the cost of a denormalised write path — standard social-app trade-off. Read-by-any-authenticated on `club_events` and `event_rsvps` is the most permissive policy; it's safe because rows contain no PII beyond `auth.users.id` uuids, but it means "private events" can't be added without revisiting the policy. The `NewEventScreen` had to push its "is the start in the past?" check into the submit handler instead of the render-time `disabled` expression because the React 19 `react-hooks/purity` rule flags `Date.now()` inside render.

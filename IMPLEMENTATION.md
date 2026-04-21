@@ -109,15 +109,30 @@ The living map of what exists in this repo and where. **Update this file every t
 - `src/features/pwa/useInstallPrompt.ts` — PWA install prompt hook
 - `src/components/InstallHint.tsx` — iOS "Add to Home Screen" hint
 
-## Community — clubs + ride hosting (preview)
+## Community — clubs + ride hosting
 
-- `src/components/CommunityScreen.tsx` — two-tab screen (Clubs / Host) with an animated gradient pill indicator; Host is the default tab. Clubs panel lists featured motorcycle clubs + upcoming rides; Host panel promotes "Create a ride" with route-planner / RSVPs / meet-up-chat / event-page teasers. Data is placeholder until a `clubs` + `club_events` schema ships
-- `src/components/CommunityScreen.test.tsx` — heading + tab-switch smoke test
+- `src/components/CommunityScreen.tsx` — two-tab screen (Clubs / Host) with an animated gradient pill indicator; Host is the default tab. Clubs panel shows "My clubs" + "Discover" from `listClubs()` / `listMyClubs()` with a live "New club" CTA. Host panel promotes "Create a ride" (routes to `/community/events/new?clubId=…` when the user is in a club, `/community/clubs/new` otherwise), lists the user's upcoming RSVPed rides from `listUpcomingEventsForMyClubs()`, and keeps a static Host-tools grid
+- `src/components/CommunityScreen.test.tsx` — header, default-tab, tab-switch, My-clubs-vs-Discover split, and Host-CTA deep-link (contains `clubId=…`)
+- `src/components/NewClubScreen.tsx` — club creation form: name (required), city, one-line vibe, 5-color accent picker (sunrise · neon · ocean · aurora · ember) with live preview tile; submits via `createClub()` and navigates to the new club's detail page
+- `src/components/NewClubScreen.test.tsx` — submit happy-path + blank-name disables submit
+- `src/components/ClubDetailScreen.tsx` — gradient club header tinted by `accent`, member count + owner badge, Join / Leave / "Host a ride" actions, upcoming-rides list from `listUpcomingEventsForClub()`. Loads via `getClub` + `isMember` + `getUserId` in parallel
+- `src/components/ClubDetailScreen.test.tsx` — not-found state, Join button for non-members, Leave + Host-a-ride for members, owner hides Leave, Join click calls `joinClub`
+- `src/components/NewEventScreen.tsx` — ride hosting form: club picker (pre-selected via `?clubId=`), title (required), datetime-local starting one week out, meet-label, notes. Redirects to `/community/clubs/new` when the user isn't in any club. `startAt < now - 60s` rejected on submit rather than in render (keeps the disabled calc pure for the React 19 hooks-purity rule)
+- `src/components/EventDetailScreen.tsx` — gradient event header (accent sourced from the parent club), formatted long date, meet-point chip, 3-way RSVP radiogroup (Going / Maybe / Not going) with optimistic count updates + error rollback, Clear button, host-only Cancel ride
+- `src/components/EventDetailScreen.test.tsx` — not-found, title + going + radio options render, optimistic Going bump + `setMyRsvp`, Cancel ride visible to host only
+- `src/components/BackLink.tsx` — reusable glass-pill back link used by the three community detail/create screens
+- `src/features/community/clubs.ts` — `listClubs()`, `listMyClubs()`, `getClub(id)`, `createClub({ name, description?, city?, accent? })`, `joinClub(id)`, `leaveClub(id)`, `isMember(id)`. Remote `public.clubs` columns selected as a single `CLUB_COLUMNS` constant, mapped to the domain `Club` type with `createdAt` as epoch ms
+- `src/features/community/clubs.test.ts` — list + myClubs + getClub (null path) + create (trim + default accent + null empties) + join/leave scoped to `(club_id, user_id)` + isMember truthiness
+- `src/features/community/events.ts` — `listUpcomingEventsForClub(clubId)`, `listUpcomingEventsForMyClubs(limit=10)`, `getEvent(id)`, `createEvent({…})`, `deleteEvent(id)`, `getMyRsvp(eventId)`, `setMyRsvp(eventId, status)`, `clearMyRsvp(eventId)`. All server filters use `start_at >= now()` so the app never sees past rides in upcoming lists
+- `src/features/community/events.test.ts` — upcoming filter, my-clubs-only filter, getEvent null path, create trim + ISO conversion + null empties, deleteEvent by id, RSVP upsert + clear
+- `src/features/community/accents.ts` — `ACCENT_GRADIENT_CLASS` (maps each accent to a Tailwind `from-…/via-…/to-…` triple), `ACCENT_LABEL` for a11y, `clubInitials(name)` helper
+- `src/types/club.ts` — `Club`, `ClubMembership`, `ClubEvent`, `RsvpStatus` ('going'|'maybe'|'no'), `EventRsvp`, `ClubAccent` ('sunrise'|'neon'|'ocean'|'aurora'|'ember') + `CLUB_ACCENTS` array for the picker
+- `supabase/community.sql` — creates `public.clubs`, `public.club_members`, `public.club_events`, `public.event_rsvps` with RLS. Trigger-maintained `clubs.member_count` and `club_events.going_count` keep roster counts visible without exposing the member roster. An auto-join trigger on `clubs` makes the creator the first member so the "only members can create events" policy works immediately. Idempotent — safe to re-run. Owner executes it once; instructions in `store/account-setup.md` §7
 
 ## Routing + shell
 
 - `src/main.tsx` — React root; mounts router; registers service worker; starts the auth deep-link listener (`startAuthDeepLinkListener()`)
-- `src/router.tsx` — routes: `/`, `/history`, `/ride/:id`, `/community`, `/profile`, `/auth/callback`, `/privacy`; app routes wrapped in `<AuthGate>`; `/privacy` is intentionally outside the gate so store reviewers can read it without signing in
+- `src/router.tsx` — routes: `/`, `/history`, `/ride/:id`, `/community`, `/community/clubs/new`, `/community/clubs/:id`, `/community/events/new`, `/community/events/:id`, `/profile`, `/auth/callback`, `/privacy`; app routes wrapped in `<AuthGate>`; `/privacy` is intentionally outside the gate so store reviewers can read it without signing in
 - `src/components/PrivacyScreen.tsx` — the public privacy policy linked from store listings + the sign-in screen
 - `src/components/PrivacyScreen.test.tsx` — render smoke test
 - `src/App.tsx` — layout: floating `InstallHint` toast + keyed `<Outlet />` wrapped in the `page-enter` transition + persistent `BottomTabBar`
@@ -131,6 +146,7 @@ The living map of what exists in this repo and where. **Update this file every t
 
 - `supabase/schema.sql` — `public.rides` (with `name` + `bike_id`) and `public.bikes` tables; RLS scoped by `auth.uid()` on both. Idempotent — safe to re-run on existing projects.
 - `supabase/storage.sql` — creates the `avatars` (public) and `documents` (private) Storage buckets and writes RLS policies that scope every object's first path segment to `auth.uid()`. Owner runs it once in the Supabase SQL editor; idempotent on re-run. Instructions are in `store/account-setup.md` §6.
+- `supabase/community.sql` — creates `public.clubs`, `public.club_members`, `public.club_events`, `public.event_rsvps` with RLS + triggers for `member_count`, `going_count`, and autojoining a club's creator. Owner runs it once in the Supabase SQL editor; idempotent on re-run. Instructions are in `store/account-setup.md` §7.
 
 ## Native
 
