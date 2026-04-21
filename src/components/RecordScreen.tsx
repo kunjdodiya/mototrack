@@ -30,6 +30,7 @@ export default function RecordScreen() {
   const [selectedBikeId, setSelectedBikeId] = useState<string>('')
   const [newBike, setNewBike] = useState('')
   const [addingBike, setAddingBike] = useState(false)
+  const [showAddBike, setShowAddBike] = useState(false)
 
   const handleAddBike = async () => {
     const name = newBike.trim()
@@ -39,6 +40,7 @@ export default function RecordScreen() {
       const bike = await addBike(name)
       setNewBike('')
       setSelectedBikeId(bike.id)
+      setShowAddBike(false)
       void pushBike(bike)
     } finally {
       setAddingBike(false)
@@ -116,7 +118,7 @@ export default function RecordScreen() {
               <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
                 Bike
               </span>
-              {bikes.length === 0 ? (
+              {bikes.length === 0 || showAddBike ? (
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -126,10 +128,15 @@ export default function RecordScreen() {
                       if (e.key === 'Enter') {
                         e.preventDefault()
                         void handleAddBike()
+                      } else if (e.key === 'Escape' && bikes.length > 0) {
+                        e.preventDefault()
+                        setNewBike('')
+                        setShowAddBike(false)
                       }
                     }}
                     placeholder="E.g. KTM 390 Duke"
                     maxLength={40}
+                    autoFocus={showAddBike}
                     className="flex-1 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3.5 text-base font-medium text-white placeholder:text-neutral-600 transition focus:border-moto-orange/60 focus:bg-white/[0.05] focus:outline-none"
                   />
                   <button
@@ -140,11 +147,30 @@ export default function RecordScreen() {
                   >
                     Add
                   </button>
+                  {bikes.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewBike('')
+                        setShowAddBike(false)
+                      }}
+                      className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-sm font-semibold text-neutral-300 transition active:scale-[0.98] hover:bg-white/[0.06]"
+                    >
+                      Cancel
+                    </button>
+                  )}
                 </div>
               ) : (
                 <select
                   value={selectedBikeId}
-                  onChange={(e) => setSelectedBikeId(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    if (v === '__new__') {
+                      setShowAddBike(true)
+                      return
+                    }
+                    setSelectedBikeId(v)
+                  }}
                   className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3.5 text-base font-medium text-white transition focus:border-moto-orange/60 focus:bg-white/[0.05] focus:outline-none"
                 >
                   <option value="">Select</option>
@@ -153,6 +179,7 @@ export default function RecordScreen() {
                       {b.name}
                     </option>
                   ))}
+                  <option value="__new__">+ Add a new bike…</option>
                 </select>
               )}
             </label>
