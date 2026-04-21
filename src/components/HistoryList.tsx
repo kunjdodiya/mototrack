@@ -65,7 +65,7 @@ export default function HistoryList() {
                     <div className="relative h-12 w-12 shrink-0 rounded-xl bg-brand-gradient-soft shadow-glow-orange">
                       <div className="absolute inset-0.5 rounded-[10px] bg-neutral-950/70" />
                       <div className="relative flex h-full w-full items-center justify-center text-base font-display font-bold text-white">
-                        {String(i + 1).padStart(2, '0')}
+                        {String(rides.length - i).padStart(2, '0')}
                       </div>
                     </div>
                     <div className="min-w-0 flex-1">
