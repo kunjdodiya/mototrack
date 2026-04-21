@@ -251,12 +251,19 @@ export default function RecordScreen() {
             <LiveStats />
           </div>
 
-          <div className="h-64 animate-fade-up overflow-hidden rounded-2xl border border-white/5 shadow-lg">
-            <RideMap
-              points={points}
-              follow
-              className="h-full bg-neutral-950"
-            />
+          <div
+            className={[
+              'animate-fade-up rounded-2xl bg-brand-gradient bg-[length:200%_200%] p-[2px]',
+              paused ? 'opacity-60' : 'animate-gradient-shift shadow-glow-orange',
+            ].join(' ')}
+          >
+            <div className="h-64 overflow-hidden rounded-[14px] bg-neutral-950">
+              <RideMap
+                points={points}
+                follow
+                className="h-full bg-neutral-950"
+              />
+            </div>
           </div>
 
           <div className="flex items-center justify-center gap-2 text-xs text-neutral-500">
