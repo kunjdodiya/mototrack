@@ -48,16 +48,23 @@ vi.mock('../features/storage/documents', () => ({
   getDocumentViewUrl: vi.fn(),
 }))
 
-vi.mock('../features/storage/profile', async () => {
-  const actual = await vi.importActual<typeof import('../features/storage/profile')>(
-    '../features/storage/profile',
-  )
-  return {
-    ...actual,
-    uploadAvatar: vi.fn(),
-    resetAvatar: vi.fn(),
-  }
-})
+vi.mock('../features/storage/profile', () => ({
+  getProfileInfo: (session: Session | null) => {
+    const u = session?.user as
+      | { email?: string; user_metadata?: Record<string, string | undefined> }
+      | undefined
+    if (!u) return { name: null, email: null, avatarUrl: null }
+    const meta = u.user_metadata ?? {}
+    return {
+      name: meta.full_name ?? meta.name ?? null,
+      email: u.email ?? null,
+      avatarUrl:
+        meta.custom_avatar_url ?? meta.avatar_url ?? meta.picture ?? null,
+    }
+  },
+  uploadAvatar: vi.fn(),
+  resetAvatar: vi.fn(),
+}))
 
 describe('ProfileScreen', () => {
   beforeEach(() => {
