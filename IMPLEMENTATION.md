@@ -70,7 +70,8 @@ The living map of what exists in this repo and where. **Update this file every t
 - `src/features/storage/db.ts` — Dexie v2: `rides` + `bikes` tables; v2 upgrade backfills `idleDurationMs` + `maxLeanAngleDeg` on pre-existing rides
 - `src/features/storage/rides.ts` — CRUD: `saveRide`, `getRide`, `listRides`, `deleteRide`, `markSynced`
 - `src/features/storage/bikes.ts` — CRUD: `listBikes`, `getBike`, `addBike`, `renameBike`, `deleteBike`, `markBikeSynced`
-- `src/features/storage/sync.ts` — `pushRide`, `pushBike`, `syncUnsyncedRides()`; scoped by Google user's `auth.uid()`
+- `src/features/storage/sync.ts` — `pushRide`, `pushBike`, `syncUnsyncedRides()`, `pullRemoteRides()`, `pullRemoteBikes()`, `syncWithCloud()`; scoped by Google user's `auth.uid()`. `AuthGate` calls `syncWithCloud()` on sign-in so rides, bikes, and profile totals reconcile across every device signed into the same Google account.
+- `src/features/storage/sync.test.ts` — unit tests for pull + two-way sync; mocks Dexie + Supabase + session
 - `src/features/storage/deviceId.ts` — stable device UUID for analytics/debugging
 - `src/features/storage/demoRide.ts` — dev-only seed for a synthetic ride
 

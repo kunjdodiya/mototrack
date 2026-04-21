@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { getSession, onAuthChange, signOut } from './session'
 import SignInScreen from '../../components/SignInScreen'
-import { syncUnsyncedRides } from '../storage/sync'
+import { syncWithCloud } from '../storage/sync'
 
 type Status = 'loading' | 'signed-in' | 'signed-out'
 
@@ -49,7 +49,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (userId) void syncUnsyncedRides().catch(() => {})
+    if (userId) void syncWithCloud().catch(() => {})
   }, [userId])
 
   if (status === 'loading') {

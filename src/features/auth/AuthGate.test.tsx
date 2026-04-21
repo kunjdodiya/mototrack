@@ -21,7 +21,7 @@ vi.mock('./session', () => ({
 }))
 
 vi.mock('../storage/sync', () => ({
-  syncUnsyncedRides: vi.fn().mockResolvedValue(undefined),
+  syncWithCloud: vi.fn().mockResolvedValue(undefined),
 }))
 
 import AuthGate from './AuthGate'

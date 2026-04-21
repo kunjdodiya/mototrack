@@ -118,6 +118,14 @@ Do not rewrite old entries. If a decision is reversed, add a new entry that supe
 
 **Consequences:** One source of truth for the policy text (`PrivacyScreen.tsx`), versioned with the rest of the code, edits ship via the existing Cloudflare Pages auto-deploy. If the policy needs to change after launch we update the React component, deploy, and update the `LAST_UPDATED` constant — no separate static-site or external PaaS to maintain.
 
+## 2026-04-21 — Two-way cloud sync on sign-in (push + pull for rides and bikes)
+
+**Context:** Signing in on a second device (same Google account) showed an empty history and an empty profile. The original `sync.ts` only pushed local rides/bikes to Supabase — it never pulled. Rides recorded on device A existed on the server but never landed in device B's Dexie, so history, profile totals, and the bike dropdown looked empty on every new device. Profile basics (email/avatar) come straight from the Supabase session and already travel with the account; the missing piece was the user-owned data in the `rides` and `bikes` tables.
+
+**Decision:** Add `pullRemoteRides()` and `pullRemoteBikes()` that `select *` from their respective tables (RLS filters to `auth.uid()`) and `bulkPut` into Dexie with `syncedAt = now`. Bundle push + pull in `syncWithCloud()` and call it from `AuthGate` on sign-in instead of the old push-only `syncUnsyncedRides()`. Server rows are authoritative once synced, so pulls overwrite local copies by id — safe because rides are immutable after Stop and bikes only mutate via rename (which flips `syncedAt=null` and gets re-pushed on the next sync).
+
+**Consequences:** Cross-device history, profile totals, and bike garage now reconcile on every sign-in. `useLiveQuery` in `HistoryList` + `ProfileScreen` picks up pulled rows automatically. Cost: each sign-in does two extra `select` calls; the existing `(user_id, started_at desc)` and `(user_id, created_at)` indexes keep them cheap. A multi-user-on-one-device case (account A signs out, account B signs in on the same phone) still leaves A's Dexie rows behind — filed as a separate concern since MotoTrack targets personal devices.
+
 ## 2026-04-21 — Native icons + splash generated from one SVG via @capacitor/assets
 
 **Context:** Both stores require a 512×512 (Play) / 1024×1024 (Apple) PNG icon plus a per-density set for every platform target. Hand-curating those 100+ files is a maintenance nightmare and easy to get wrong (Android adaptive icons in particular have a foreground/background split that needs the right safe-area).
