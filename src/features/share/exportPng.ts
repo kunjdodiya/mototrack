@@ -1,4 +1,4 @@
-import type { Ride } from '../../types/ride'
+import type { Ride, TrackPoint } from '../../types/ride'
 import {
   TILE_SIZE,
   centreOf,
@@ -14,16 +14,39 @@ import {
   formatSpeed,
 } from '../stats/format'
 import { getBike } from '../storage/bikes'
+import { haversine } from '../stats/haversine'
 
 // Instagram Stories are 9:16 at 1080×1920. Using the exact spec makes the
 // exported PNG drop straight into a Story without being letterboxed.
 const CANVAS_W = 1080
 const CANVAS_H = 1920
 
-// Vertical layout zones (y-coordinates on the final canvas).
+// Vertical layout — fixed pixel y-coordinates so every block has a guaranteed
+// home inside the 1920-tall canvas. Tweak here to rebalance the poster; every
+// drawer below reads from these constants.
 const MAP_TOP = 0
-const MAP_BOTTOM = 1120
-const STATS_TOP = 1120
+const MAP_BOTTOM = 880
+const STATS_TOP = 880
+
+const TITLE_BASELINE_Y = 962
+const SUBTITLE_BASELINE_Y = 1010
+const BIKE_CHIP_TOP_Y = 1034
+const BIKE_CHIP_H = 50
+
+const GRAPH_TOP_Y = 1104
+const GRAPH_H = 150
+
+const HERO_TOP_Y = 1280
+const HERO_H = 170
+
+const GRID_TOP_Y = 1470
+const GRID_TILE_H = 160
+const GRID_GAP = 20
+const GRID_COLS = 3
+
+const PAD_X = 72
+const TILE_GAP = 20
+const FOOTER_BASELINE_Y = 1880
 
 type ExportOpts = {
   ride: Ride
@@ -36,8 +59,8 @@ type ExportOpts = {
  * Why this compositor exists: html-to-image on a live Leaflet map taints the
  * canvas on Safari. Instead we fetch OSM tiles via fetch() + createImageBitmap
  * (guaranteed CORS-clean), draw them ourselves, and project the track with our
- * own Web Mercator math. Everything — logo, headings, stats, tiles — is drawn
- * directly onto the canvas so the whole thing is a single paint path.
+ * own Web Mercator math. Everything — logo, headings, speed graph, stats —
+ * is drawn directly onto the canvas so the whole thing is a single paint path.
  */
 export async function renderSharePng({ ride }: ExportOpts): Promise<Blob> {
   if (ride.track.length < 2) {
@@ -73,6 +96,7 @@ export async function renderSharePng({ ride }: ExportOpts): Promise<Blob> {
   drawBrandOverlay(ctx)
   drawHeaderLogo(ctx)
   drawTitle(ctx, ride, bikeName)
+  drawSpeedGraph(ctx, ride.track)
   drawStats(ctx, ride)
   drawFooter(ctx)
 
@@ -188,14 +212,16 @@ function drawBrandOverlay(ctx: CanvasRenderingContext2D) {
   ctx.fillStyle = topFade
   ctx.fillRect(0, 0, CANVAS_W, 320)
 
-  // Fade the bottom of the map into the stats panel.
-  const bottomFade = ctx.createLinearGradient(0, mapH - 220, 0, mapH)
+  // Fade the bottom of the map into the stats panel so the title reads on
+  // solid black.
+  const fadeH = 200
+  const bottomFade = ctx.createLinearGradient(0, mapH - fadeH, 0, mapH)
   bottomFade.addColorStop(0, 'rgba(10,10,10,0)')
   bottomFade.addColorStop(1, 'rgba(10,10,10,1)')
   ctx.fillStyle = bottomFade
-  ctx.fillRect(0, mapH - 220, CANVAS_W, 220)
+  ctx.fillRect(0, mapH - fadeH, CANVAS_W, fadeH)
 
-  // Solid base for the stats panel.
+  // Solid base for the stats panel below the map.
   ctx.fillStyle = '#0a0a0a'
   ctx.fillRect(0, STATS_TOP, CANVAS_W, CANVAS_H - STATS_TOP)
 
@@ -217,9 +243,9 @@ function drawBrandOverlay(ctx: CanvasRenderingContext2D) {
 // ── header: logo + wordmark ─────────────────────────────────────────────────
 
 function drawHeaderLogo(ctx: CanvasRenderingContext2D) {
-  const logoX = 72
-  const logoY = 140
-  const logoSize = 88
+  const logoX = PAD_X
+  const logoY = 130
+  const logoSize = 84
 
   // Rounded black tile matching the app icon.
   roundRect(ctx, logoX, logoY, logoSize, logoSize, 22)
@@ -255,18 +281,18 @@ function drawHeaderLogo(ctx: CanvasRenderingContext2D) {
   const textX = logoX + logoSize + 22
   ctx.textBaseline = 'middle'
   ctx.textAlign = 'left'
-  ctx.font = '700 52px "Space Grotesk", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  ctx.font = '700 48px "Space Grotesk", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   ctx.fillStyle = '#ff4d00'
-  ctx.fillText('Moto', textX, logoY + logoSize / 2 - 4)
+  ctx.fillText('Moto', textX, logoY + logoSize / 2 - 8)
   const motoWidth = ctx.measureText('Moto').width
   ctx.fillStyle = '#ffffff'
-  ctx.fillText('Track', textX + motoWidth, logoY + logoSize / 2 - 4)
+  ctx.fillText('Track', textX + motoWidth, logoY + logoSize / 2 - 8)
 
-  // "RIDE RECAP" eyebrow.
-  ctx.font = '600 22px "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  // "RIDE · RECAP" eyebrow.
+  ctx.font = '600 20px "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   ctx.fillStyle = 'rgba(255,255,255,0.75)'
   ctx.textBaseline = 'alphabetic'
-  ctx.fillText('RIDE  ·  RECAP', textX, logoY + logoSize + 24)
+  ctx.fillText('RIDE  ·  RECAP', textX, logoY + logoSize / 2 + 26)
 }
 
 // ── title block ─────────────────────────────────────────────────────────────
@@ -279,38 +305,36 @@ function drawTitle(
   const titleText = ride.name ?? formatDateTime(ride.startedAt)
   const subtitleText = ride.name ? formatDateTime(ride.startedAt) : null
 
-  const titleX = 72
-  let y = STATS_TOP + 90
-
   ctx.textAlign = 'left'
   ctx.textBaseline = 'alphabetic'
 
   // Big title in gradient.
-  ctx.font = '800 72px "Space Grotesk", "Inter", -apple-system, BlinkMacSystemFont, sans-serif'
-  const titleGrad = ctx.createLinearGradient(titleX, y - 60, titleX + 800, y)
+  ctx.font = '800 66px "Space Grotesk", "Inter", -apple-system, BlinkMacSystemFont, sans-serif'
+  const titleGrad = ctx.createLinearGradient(
+    PAD_X,
+    TITLE_BASELINE_Y - 60,
+    PAD_X + 800,
+    TITLE_BASELINE_Y,
+  )
   titleGrad.addColorStop(0, '#ff4d00')
   titleGrad.addColorStop(0.55, '#ff2d87')
   titleGrad.addColorStop(1, '#7c3aed')
   ctx.fillStyle = titleGrad
-  fillTextTruncated(ctx, titleText, titleX, y, CANVAS_W - titleX * 2)
-  y += 52
+  fillTextTruncated(ctx, titleText, PAD_X, TITLE_BASELINE_Y, CANVAS_W - PAD_X * 2)
 
   if (subtitleText) {
-    ctx.font = '500 28px "Inter", -apple-system, sans-serif'
+    ctx.font = '500 26px "Inter", -apple-system, sans-serif'
     ctx.fillStyle = 'rgba(255,255,255,0.68)'
-    ctx.fillText(subtitleText, titleX, y)
-    y += 28
+    ctx.fillText(subtitleText, PAD_X, SUBTITLE_BASELINE_Y)
   }
 
   if (bikeName) {
-    y += 16
     const label = `🏍  ${bikeName}`
-    ctx.font = '600 24px "Inter", -apple-system, sans-serif'
-    const pad = 22
+    ctx.font = '600 22px "Inter", -apple-system, sans-serif'
+    const pad = 20
     const textW = ctx.measureText(label).width
     const chipW = textW + pad * 2
-    const chipH = 52
-    roundRect(ctx, titleX, y - chipH + 12, chipW, chipH, chipH / 2)
+    roundRect(ctx, PAD_X, BIKE_CHIP_TOP_Y, chipW, BIKE_CHIP_H, BIKE_CHIP_H / 2)
     ctx.fillStyle = 'rgba(255,255,255,0.06)'
     ctx.fill()
     ctx.strokeStyle = 'rgba(255,255,255,0.18)'
@@ -318,9 +342,140 @@ function drawTitle(
     ctx.stroke()
     ctx.fillStyle = '#f5f5f5'
     ctx.textBaseline = 'middle'
-    ctx.fillText(label, titleX + pad, y - chipH / 2 + 12)
+    ctx.fillText(label, PAD_X + pad, BIKE_CHIP_TOP_Y + BIKE_CHIP_H / 2)
     ctx.textBaseline = 'alphabetic'
   }
+}
+
+// ── speed graph ─────────────────────────────────────────────────────────────
+
+function drawSpeedGraph(ctx: CanvasRenderingContext2D, track: TrackPoint[]) {
+  const x = PAD_X
+  const y = GRAPH_TOP_Y
+  const w = CANVAS_W - PAD_X * 2
+  const h = GRAPH_H
+
+  // Panel background so the graph reads as a dedicated module.
+  roundRect(ctx, x, y, w, h, 26)
+  ctx.fillStyle = 'rgba(255,255,255,0.04)'
+  ctx.fill()
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)'
+  ctx.lineWidth = 1.5
+  ctx.stroke()
+
+  // Label in top-left.
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'alphabetic'
+  ctx.font = '700 18px "Inter", -apple-system, sans-serif'
+  ctx.fillStyle = 'rgba(255,255,255,0.55)'
+  ctx.fillText('SPEED  ·  KM/H OVER DISTANCE', x + 24, y + 32)
+
+  const samples = smoothSpeeds(sampleSpeeds(track))
+  if (samples.length < 2) {
+    ctx.textAlign = 'center'
+    ctx.font = '500 20px "Inter", -apple-system, sans-serif'
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'
+    ctx.fillText('Not enough data for a speed graph.', x + w / 2, y + h / 2 + 8)
+    return
+  }
+
+  const maxMps = Math.max(...samples, 1)
+  const maxKmh = Math.ceil((maxMps * 3.6) / 10) * 10 || 10
+
+  // Max value callout in top-right.
+  ctx.textAlign = 'right'
+  ctx.font = '800 22px "Space Grotesk", "Inter", -apple-system, sans-serif'
+  ctx.fillStyle = '#ff4d00'
+  ctx.fillText(`${Math.round(maxKmh)} km/h`, x + w - 24, y + 32)
+
+  // Inner plot rectangle (leaves room for the label row + y-ticks on left).
+  const padL = 56
+  const padR = 20
+  const padT = 52
+  const padB = 22
+  const innerX = x + padL
+  const innerY = y + padT
+  const innerW = w - padL - padR
+  const innerH = h - padT - padB
+
+  // Y-ticks at 0, max/2, max.
+  const ticks = [0, maxKmh / 2, maxKmh]
+  ctx.textAlign = 'right'
+  ctx.textBaseline = 'middle'
+  ctx.font = '500 14px "Inter", -apple-system, sans-serif'
+  for (const k of ticks) {
+    const ty = innerY + innerH - (k / maxKmh) * innerH
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(innerX, ty)
+    ctx.lineTo(innerX + innerW, ty)
+    ctx.stroke()
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'
+    ctx.fillText(String(Math.round(k)), innerX - 8, ty)
+  }
+  ctx.textBaseline = 'alphabetic'
+
+  // Build the path.
+  const points = samples.map((v, i) => {
+    const px = innerX + (i / (samples.length - 1)) * innerW
+    const kmh = v * 3.6
+    const py = innerY + innerH - (kmh / maxKmh) * innerH
+    return { x: px, y: py }
+  })
+
+  // Area fill (soft orange).
+  ctx.beginPath()
+  ctx.moveTo(points[0].x, innerY + innerH)
+  for (const p of points) ctx.lineTo(p.x, p.y)
+  ctx.lineTo(points[points.length - 1].x, innerY + innerH)
+  ctx.closePath()
+  const areaGrad = ctx.createLinearGradient(0, innerY, 0, innerY + innerH)
+  areaGrad.addColorStop(0, 'rgba(255,77,0,0.35)')
+  areaGrad.addColorStop(1, 'rgba(255,77,0,0.02)')
+  ctx.fillStyle = areaGrad
+  ctx.fill()
+
+  // Stroke.
+  ctx.beginPath()
+  for (let i = 0; i < points.length; i++) {
+    if (i === 0) ctx.moveTo(points[i].x, points[i].y)
+    else ctx.lineTo(points[i].x, points[i].y)
+  }
+  ctx.strokeStyle = '#ff4d00'
+  ctx.lineWidth = 3
+  ctx.lineJoin = 'round'
+  ctx.lineCap = 'round'
+  ctx.stroke()
+}
+
+/** Sample speed (m/s) for each track point — uses reported speed else derives it from haversine/Δt. */
+function sampleSpeeds(track: TrackPoint[]): number[] {
+  if (track.length < 2) return []
+  const out: number[] = [0]
+  for (let i = 1; i < track.length; i++) {
+    const a = track[i - 1]
+    const b = track[i]
+    if (b.speed != null) {
+      out.push(Math.max(0, b.speed))
+      continue
+    }
+    const dt = (b.ts - a.ts) / 1000
+    if (dt <= 0) {
+      out.push(0)
+      continue
+    }
+    out.push(haversine(a.lat, a.lng, b.lat, b.lng) / dt)
+  }
+  return out
+}
+
+/** 5-point centered moving average — smooths GPS speed jitter without lag. */
+function smoothSpeeds(values: number[]): number[] {
+  return values.map((_, i) => {
+    const win = values.slice(Math.max(0, i - 2), Math.min(values.length, i + 3))
+    return win.reduce((s, v) => s + v, 0) / win.length
+  })
 }
 
 // ── stats grid ──────────────────────────────────────────────────────────────
@@ -328,47 +483,37 @@ function drawTitle(
 type StatCell = {
   label: string
   value: string
-  hero?: boolean
 }
 
 function drawStats(ctx: CanvasRenderingContext2D, ride: Ride) {
   const { stats } = ride
 
   const hero: StatCell[] = [
-    { label: 'DISTANCE', value: formatDistance(stats.distanceMeters), hero: true },
-    { label: 'TOP SPEED', value: formatSpeed(stats.maxSpeedMps), hero: true },
+    { label: 'DISTANCE', value: formatDistance(stats.distanceMeters) },
+    { label: 'TOP SPEED', value: formatSpeed(stats.maxSpeedMps) },
   ]
   const grid: StatCell[] = [
     { label: 'Duration', value: formatDuration(stats.durationMs) },
-    { label: 'Moving', value: formatDuration(stats.movingDurationMs) },
-    { label: 'Idle', value: formatDuration(stats.idleDurationMs) },
     { label: 'Avg speed', value: formatSpeed(stats.avgSpeedMps) },
     { label: 'Max lean', value: formatLeanAngle(stats.maxLeanAngleDeg) },
+    { label: 'Moving', value: formatDuration(stats.movingDurationMs) },
+    { label: 'Idle', value: formatDuration(stats.idleDurationMs) },
     { label: 'Elev gain', value: formatElevation(stats.elevationGainMeters) },
   ]
 
-  const padX = 72
-  const gap = 20
-  const heroY = STATS_TOP + 300
-  const heroH = 220
-  const heroW = (CANVAS_W - padX * 2 - gap) / 2
-
+  const heroW = (CANVAS_W - PAD_X * 2 - TILE_GAP) / 2
   hero.forEach((cell, i) => {
-    const x = padX + i * (heroW + gap)
-    drawHeroTile(ctx, x, heroY, heroW, heroH, cell)
+    const x = PAD_X + i * (heroW + TILE_GAP)
+    drawHeroTile(ctx, x, HERO_TOP_Y, heroW, HERO_H, cell)
   })
 
-  const gridY = heroY + heroH + gap
-  const cols = 3
-  const tileW = (CANVAS_W - padX * 2 - gap * (cols - 1)) / cols
-  const tileH = 180
-
+  const tileW = (CANVAS_W - PAD_X * 2 - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS
   grid.forEach((cell, i) => {
-    const col = i % cols
-    const row = Math.floor(i / cols)
-    const x = padX + col * (tileW + gap)
-    const y = gridY + row * (tileH + gap)
-    drawStatTile(ctx, x, y, tileW, tileH, cell)
+    const col = i % GRID_COLS
+    const row = Math.floor(i / GRID_COLS)
+    const x = PAD_X + col * (tileW + GRID_GAP)
+    const y = GRID_TOP_Y + row * (GRID_TILE_H + GRID_GAP)
+    drawStatTile(ctx, x, y, tileW, GRID_TILE_H, cell)
   })
 }
 
@@ -380,7 +525,7 @@ function drawHeroTile(
   h: number,
   cell: StatCell,
 ) {
-  roundRect(ctx, x, y, w, h, 32)
+  roundRect(ctx, x, y, w, h, 30)
   const fill = ctx.createLinearGradient(x, y, x + w, y + h)
   fill.addColorStop(0, 'rgba(255,77,0,0.18)')
   fill.addColorStop(0.55, 'rgba(255,45,135,0.16)')
@@ -394,17 +539,17 @@ function drawHeroTile(
   ctx.textAlign = 'left'
   ctx.textBaseline = 'alphabetic'
 
-  ctx.font = '700 22px "Inter", -apple-system, sans-serif'
+  ctx.font = '700 20px "Inter", -apple-system, sans-serif'
   ctx.fillStyle = 'rgba(255,255,255,0.72)'
-  ctx.fillText(cell.label, x + 28, y + 54)
+  ctx.fillText(cell.label, x + 26, y + 46)
 
-  ctx.font = '800 76px "Space Grotesk", "Inter", -apple-system, sans-serif'
-  const valueGrad = ctx.createLinearGradient(x, y + h - 90, x + w, y + h - 30)
+  ctx.font = '800 62px "Space Grotesk", "Inter", -apple-system, sans-serif'
+  const valueGrad = ctx.createLinearGradient(x, y + h - 70, x + w, y + h - 20)
   valueGrad.addColorStop(0, '#ff4d00')
   valueGrad.addColorStop(0.55, '#ff2d87')
   valueGrad.addColorStop(1, '#7c3aed')
   ctx.fillStyle = valueGrad
-  fillTextTruncated(ctx, cell.value, x + 28, y + h - 38, w - 56)
+  fillTextTruncated(ctx, cell.value, x + 26, y + h - 32, w - 52)
 }
 
 function drawStatTile(
@@ -415,7 +560,7 @@ function drawStatTile(
   h: number,
   cell: StatCell,
 ) {
-  roundRect(ctx, x, y, w, h, 26)
+  roundRect(ctx, x, y, w, h, 24)
   ctx.fillStyle = 'rgba(255,255,255,0.04)'
   ctx.fill()
   ctx.strokeStyle = 'rgba(255,255,255,0.08)'
@@ -434,13 +579,13 @@ function drawStatTile(
   ctx.textAlign = 'left'
   ctx.textBaseline = 'alphabetic'
 
-  ctx.font = '700 20px "Inter", -apple-system, sans-serif'
+  ctx.font = '700 18px "Inter", -apple-system, sans-serif'
   ctx.fillStyle = 'rgba(255,255,255,0.55)'
-  ctx.fillText(cell.label.toUpperCase(), x + 24, y + 52)
+  ctx.fillText(cell.label.toUpperCase(), x + 22, y + 46)
 
-  ctx.font = '800 48px "Space Grotesk", "Inter", -apple-system, sans-serif'
+  ctx.font = '800 42px "Space Grotesk", "Inter", -apple-system, sans-serif'
   ctx.fillStyle = '#f5f5f5'
-  fillTextTruncated(ctx, cell.value, x + 24, y + h - 32, w - 48)
+  fillTextTruncated(ctx, cell.value, x + 22, y + h - 30, w - 44)
 }
 
 // ── footer ──────────────────────────────────────────────────────────────────
@@ -448,12 +593,12 @@ function drawStatTile(
 function drawFooter(ctx: CanvasRenderingContext2D) {
   ctx.textAlign = 'center'
   ctx.textBaseline = 'alphabetic'
-  ctx.font = '500 20px "Inter", -apple-system, sans-serif'
+  ctx.font = '500 18px "Inter", -apple-system, sans-serif'
   ctx.fillStyle = 'rgba(255,255,255,0.4)'
   ctx.fillText(
     'mototrack.app  ·  © OpenStreetMap contributors · © CARTO',
     CANVAS_W / 2,
-    CANVAS_H - 48,
+    FOOTER_BASELINE_Y,
   )
 }
 
