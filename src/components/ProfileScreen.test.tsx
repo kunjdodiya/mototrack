@@ -1,10 +1,28 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import type { Session } from '@supabase/supabase-js'
 import ProfileScreen from './ProfileScreen'
 
+const onAuthChangeCbs: Array<(s: Session | null) => void> = []
+
 vi.mock('../features/auth/session', () => ({
-  getSession: vi.fn().mockResolvedValue({ user: { email: 'rider@example.com' } }),
+  getSession: vi.fn().mockResolvedValue({
+    user: {
+      email: 'rider@example.com',
+      user_metadata: {
+        full_name: 'Jamie Rider',
+        avatar_url: 'https://g.test/me.jpg',
+      },
+    },
+  }),
+  onAuthChange: (cb: (s: Session | null) => void) => {
+    onAuthChangeCbs.push(cb)
+    return () => {
+      const i = onAuthChangeCbs.indexOf(cb)
+      if (i >= 0) onAuthChangeCbs.splice(i, 1)
+    }
+  },
 }))
 
 vi.mock('../features/storage/db', () => ({
@@ -23,20 +41,41 @@ vi.mock('../features/storage/sync', () => ({
   pushBike: vi.fn(),
 }))
 
+vi.mock('../features/storage/documents', () => ({
+  listDocuments: vi.fn().mockResolvedValue([]),
+  uploadDocument: vi.fn(),
+  deleteDocument: vi.fn(),
+  getDocumentViewUrl: vi.fn(),
+}))
+
+vi.mock('../features/storage/profile', async () => {
+  const actual = await vi.importActual<typeof import('../features/storage/profile')>(
+    '../features/storage/profile',
+  )
+  return {
+    ...actual,
+    uploadAvatar: vi.fn(),
+    resetAvatar: vi.fn(),
+  }
+})
+
 describe('ProfileScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    onAuthChangeCbs.length = 0
   })
 
-  it('renders the profile heading and totals section', async () => {
+  it('renders the profile heading, name, email and totals section', async () => {
     render(
       <MemoryRouter>
         <ProfileScreen />
       </MemoryRouter>,
     )
-    expect(screen.getByRole('heading', { name: /my profile/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /jamie rider/i })).toBeInTheDocument()
+    expect(await screen.findByText('rider@example.com')).toBeInTheDocument()
     expect(screen.getByText(/totals/i)).toBeInTheDocument()
     expect(screen.getByText(/my bikes/i)).toBeInTheDocument()
-    expect(await screen.findByText('rider@example.com')).toBeInTheDocument()
+    expect(screen.getByText(/legal documents/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /change photo/i })).toBeInTheDocument()
   })
 })

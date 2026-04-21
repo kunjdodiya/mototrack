@@ -32,8 +32,8 @@ The living map of what exists in this repo and where. **Update this file every t
 - `src/features/auth/deepLink.test.ts` — query/fragment code extraction, error-redirect handling, browser-close on success/failure, listener forwarding
 - `src/features/auth/AuthGate.tsx` — React component; renders children only when authenticated, else renders `SignInScreen`; triggers sync on first sign-in
 - `src/features/auth/AuthGate.test.tsx` — renders sign-in when no session, children when session present; mocks Supabase
-- `src/components/SignInScreen.tsx` — centered logo + "Continue with Google" button + privacy-policy link
-- `src/components/SignOutButton.tsx` — header button; calls `signOut()`
+- `src/components/SignInScreen.tsx` — centered gradient logo + "Continue with Google" button + privacy-policy link; mesh-glow background
+- `src/components/SignOutButton.tsx` — rendered inside `ProfileScreen`; calls `signOut()`
 - `src/components/AuthCallback.tsx` — `/auth/callback` route; navigates home once Supabase processes the OAuth redirect
 
 ## GPS recorder
@@ -86,8 +86,13 @@ The living map of what exists in this repo and where. **Update this file every t
 
 ## Profile — per-user page
 
-- `src/components/ProfileScreen.tsx` — rider email, aggregate totals (count/distance/time/top speed/max lean), bike management (add/remove)
-- `src/components/ProfileScreen.test.tsx` — render smoke test (routes mocked)
+- `src/components/ProfileScreen.tsx` — gradient header with rider avatar + name + email, aggregate totals (count/distance/time/top speed/max lean), bike management (add/remove), legal-documents section, sign-out button
+- `src/components/ProfileScreen.test.tsx` — render smoke test (routes + storage mocked)
+- `src/components/DocumentViewer.tsx` — full-screen modal that renders PDFs in an iframe and images inline via short-lived signed URLs
+- `src/features/storage/profile.ts` — `getProfileInfo(session)` (returns Google full_name/email/avatar, with user-set `custom_avatar_url` winning), `uploadAvatar(file)` (Supabase Storage `avatars` bucket, writes `user_metadata.custom_avatar_url`), `resetAvatar()` (falls back to Google picture)
+- `src/features/storage/profile.test.ts` — covers metadata precedence, size/type guards, upload path scoping, and reset behaviour
+- `src/features/storage/documents.ts` — `listDocuments`, `uploadDocument`, `deleteDocument`, `getDocumentViewUrl`; PDF/JPG/PNG/WebP/HEIC up to 10 MB, stored in the private `documents` Supabase Storage bucket under `<user_id>/<timestamp>__<kind>__<slug>.<ext>`
+- `src/features/storage/documents.test.ts` — upload validation, list mapping, signed-URL generation, delete
 
 ## Share
 
@@ -104,20 +109,28 @@ The living map of what exists in this repo and where. **Update this file every t
 - `src/features/pwa/useInstallPrompt.ts` — PWA install prompt hook
 - `src/components/InstallHint.tsx` — iOS "Add to Home Screen" hint
 
+## Community — clubs + ride hosting (preview)
+
+- `src/components/CommunityScreen.tsx` — two-tab screen (Clubs / Host) with an animated gradient pill indicator. Clubs panel lists featured motorcycle clubs + upcoming rides; Host panel promotes "Create a ride" with route-planner / RSVPs / meet-up-chat / event-page teasers. Data is placeholder until a `clubs` + `club_events` schema ships
+- `src/components/CommunityScreen.test.tsx` — heading + tab-switch smoke test
+
 ## Routing + shell
 
 - `src/main.tsx` — React root; mounts router; registers service worker; starts the auth deep-link listener (`startAuthDeepLinkListener()`)
-- `src/router.tsx` — routes: `/`, `/history`, `/ride/:id`, `/profile`, `/auth/callback`, `/privacy`; app routes wrapped in `<AuthGate>`; `/privacy` is intentionally outside the gate so store reviewers can read it without signing in
+- `src/router.tsx` — routes: `/`, `/history`, `/ride/:id`, `/community`, `/profile`, `/auth/callback`, `/privacy`; app routes wrapped in `<AuthGate>`; `/privacy` is intentionally outside the gate so store reviewers can read it without signing in
 - `src/components/PrivacyScreen.tsx` — the public privacy policy linked from store listings + the sign-in screen
 - `src/components/PrivacyScreen.test.tsx` — render smoke test
-- `src/App.tsx` — layout: header (logo + Record/History/Profile nav + sign-out) + nested `<Outlet />`
-- `src/index.css` — Tailwind entry + global styles; Inter as the primary font family
+- `src/App.tsx` — layout: floating `InstallHint` toast + keyed `<Outlet />` wrapped in the `page-enter` transition + persistent `BottomTabBar`
+- `src/components/BottomTabBar.tsx` — glass-blur 4-tab footer (Ride Now · My Rides · Community · My Profile) with an animated gradient pill indicator and SVG icons; respects `env(safe-area-inset-bottom)` for native notches
+- `src/components/BottomTabBar.test.tsx` — renders all tabs, links to the right routes, and marks the current route as `aria-current`
+- `src/index.css` — Tailwind entry + global mesh-gradient body background, `font-display` / `text-gradient` / `glass` utilities, `page-enter` transition, `prefers-reduced-motion` override
 - `src/test/setup.ts` — Vitest setup; imports `@testing-library/jest-dom`
-- `index.html` — loads Inter from Google Fonts (preconnected) for modern sans-serif typography
+- `index.html` — loads Inter (body) + Space Grotesk (display) + JetBrains Mono (tabular figures) from Google Fonts, preconnected
 
 ## Supabase
 
 - `supabase/schema.sql` — `public.rides` (with `name` + `bike_id`) and `public.bikes` tables; RLS scoped by `auth.uid()` on both. Idempotent — safe to re-run on existing projects.
+- `supabase/storage.sql` — creates the `avatars` (public) and `documents` (private) Storage buckets and writes RLS policies that scope every object's first path segment to `auth.uid()`. Owner runs it once in the Supabase SQL editor; idempotent on re-run. Instructions are in `store/account-setup.md` §6.
 
 ## Native
 

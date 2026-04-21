@@ -65,6 +65,13 @@ In your Supabase dashboard → Authentication → URL Configuration:
 
 - Add `com.kunjdodiya.mototrack://auth/callback` to **Redirect URLs** (alongside `https://mototrack.pages.dev/**` which is already there for web)
 
+### Profile photos + legal documents (Storage)
+
+The profile page lets riders upload a custom photo and store their licence/insurance. Both need Supabase Storage buckets:
+
+1. Dashboard → **SQL Editor** → New query → paste the contents of [`supabase/storage.sql`](../supabase/storage.sql) → Run.
+2. That script is idempotent and creates two buckets — `avatars` (public, so the profile photo URL works anywhere) and `documents` (private, served via short-lived signed URLs) — plus RLS policies that scope every object to its owning user's folder (`<user_id>/...`).
+
 That's it. **Do NOT add the `com.kunjdodiya.mototrack://...` URL to Google Cloud Console** — Google never sees the custom scheme. The OAuth flow is:
 
 1. App opens browser → `accounts.google.com` (Google's `redirect_uri` is Supabase's callback, e.g. `https://<project>.supabase.co/auth/v1/callback`, which is already wired)

@@ -126,6 +126,19 @@ Do not rewrite old entries. If a decision is reversed, add a new entry that supe
 
 **Consequences:** Cross-device history, profile totals, and bike garage now reconcile on every sign-in. `useLiveQuery` in `HistoryList` + `ProfileScreen` picks up pulled rows automatically. Cost: each sign-in does two extra `select` calls; the existing `(user_id, started_at desc)` and `(user_id, created_at)` indexes keep them cheap. A multi-user-on-one-device case (account A signs out, account B signs in on the same phone) still leaves A's Dexie rows behind — filed as a separate concern since MotoTrack targets personal devices.
 
+## 2026-04-21 — Profile photo + legal documents live in Supabase Storage, not Dexie
+
+**Context:** Owner asked the profile page to show the rider's Google name + photo with an option to upload a custom picture, and to store legal documents (licence, insurance) as PDFs or JPGs viewable inside the app. The rest of the app is local-first (Dexie) for a reason — rides must survive network loss — but photos and paperwork are bulky binary blobs that don't fit IndexedDB cleanly and aren't on the critical path of any ride.
+
+**Decision:** Use Supabase Storage for both, with two buckets:
+
+- `avatars` (public): each user writes to `<user_id>/avatar-<ts>.<ext>`. Public URL is what `<img src>` uses; the chosen URL is saved to `user_metadata.custom_avatar_url` via `supabase.auth.updateUser()`. `getProfileInfo(session)` returns `custom_avatar_url ?? avatar_url ?? picture`, so clearing the custom field falls straight back to Google's photo.
+- `documents` (private): `<user_id>/<ts>__<kind>__<slug>.<ext>` where `kind ∈ {license, insurance, other}`. `DocumentViewer` opens the file via a short-lived (10-minute) signed URL — iframe for PDFs, `<img>` for images. No Dexie cache layer.
+
+RLS uses `(storage.foldername(name))[1] = auth.uid()::text` so a user can only touch objects in their own folder. Owner runs `supabase/storage.sql` once to create the buckets + policies (documented in `store/account-setup.md` §6).
+
+**Consequences:** One source of truth per artifact, synced across devices the moment it's uploaded. Documents are unavailable offline — acceptable because they're reference material, not ride-critical. The "local-first" rule in AGENTS.md still holds: it was always about *rides*, not every byte the app handles. Metadata for an uploaded document is fully encoded in the filename (`<ts>__<kind>__<slug>`), so no sidecar table is needed — one SQL file does the whole feature.
+
 ## 2026-04-21 — Native icons + splash generated from one SVG via @capacitor/assets
 
 **Context:** Both stores require a 512×512 (Play) / 1024×1024 (Apple) PNG icon plus a per-density set for every platform target. Hand-curating those 100+ files is a maintenance nightmare and easy to get wrong (Android adaptive icons in particular have a foreground/background split that needs the right safe-area).
@@ -133,3 +146,11 @@ Do not rewrite old entries. If a decision is reversed, add a new entry that supe
 **Decision:** Add `scripts/generate-native-assets.mjs` (run via `npm run native:assets`) that uses `sharp` to rasterise `public/icon-512.svg` to a few canonical 1024×1024 / 2732×2732 PNGs in `assets/`, then shells out to `npx @capacitor/assets generate` with the brand-dark `#0a0a0a` background. The output PNGs are committed under `ios/App/App/Assets.xcassets/` and `android/app/src/main/res/`.
 
 **Consequences:** The brand changes at one source-of-truth file (`public/icon-512.svg`). Re-running the script regenerates every native + PWA size. The script is idempotent — checking the diff after a run shows whether the source art actually changed. `sharp` is added as a dev-only dependency (~15 MB), worth it for the avoidance of a separate design-tool round-trip per icon update.
+
+## 2026-04-21 — Bottom tab bar shell + Community tab (native-feeling redesign)
+
+**Context:** Owner asked for a native-app feel on iOS + Android instead of the previous top-header web layout. Four destinations belong in the primary navigation: Ride Now (recorder), My Rides (history), Community (new — clubs + ride hosting), My Profile. The top-header nav also made Sign Out feel like a chrome element instead of a profile setting.
+
+**Decision:** Replace the `<App>` top-header layout with a floating glass `BottomTabBar` pinned to `env(safe-area-inset-bottom)` and four persistent tabs with animated gradient pill indicators. `App.tsx` keeps its `InstallHint` toast + `<Outlet />` and re-keys `<main>` on `location.pathname` so every route transition triggers a `page-enter` animation. Sign Out moves inside `ProfileScreen`. A new `/community` route renders `CommunityScreen`, which is labelled as a preview — the clubs and hosting data are placeholder until the backend schema for clubs/events ships. Design tokens live in `tailwind.config.js` (`brand-gradient`, `moto-mesh`, `Space Grotesk` display font, `animate-pulse-ring` / `animate-fade-up`) and a mesh-gradient body background in `index.css`; `@media (prefers-reduced-motion)` disables animations.
+
+**Consequences:** All primary navigation is reachable by thumb; looks and feels like a native app shell on both platforms. Adding a fifth top-level destination requires a new entry in `BottomTabBar` *and* a new route. Community is a shell only — the next iteration needs a `clubs` + `club_events` schema with RLS and a join/leave flow; until then the chips and cards render static data so the tab doesn't feel empty. Page transitions are CSS-only (no `framer-motion`) to keep the bundle flat and respect motion preferences automatically.
