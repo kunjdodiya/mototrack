@@ -34,7 +34,7 @@ See `IMPLEMENTATION.md` for the authoritative file-by-file map.
 | Auth + DB | Supabase (Google OAuth, Postgres, RLS, Realtime) | Managed, free tier, RLS gives per-user isolation for cheap |
 | Local storage | Dexie 4 (IndexedDB) | Offline-first; rides survive network loss |
 | State | Zustand | Tiny, idiomatic for the recorder session |
-| Map | Leaflet + OpenStreetMap | Free, no API key |
+| Map | Leaflet + CARTO Dark Matter (OSM data) | Free, no API key, dark-UI friendly |
 | Tests | Vitest + @testing-library/react + jsdom | Vite-native, fast, identical config |
 
 ## Conventions

@@ -121,10 +121,10 @@ async function drawMapHero(ctx: CanvasRenderingContext2D, ride: Ride) {
   }
   await Promise.all(tilePromises)
 
-  // Pull the tile colour down with a dark multiply so the brand gradient
-  // reads as the dominant hue on top.
+  // Light violet multiply tints the already-dark CARTO tiles toward the brand
+  // palette without crushing road/label detail to pure black.
   mctx.globalCompositeOperation = 'multiply'
-  mctx.fillStyle = 'rgba(20,14,32,0.72)'
+  mctx.fillStyle = 'rgba(60,40,90,0.55)'
   mctx.fillRect(0, 0, CANVAS_W, mapH)
   mctx.globalCompositeOperation = 'source-over'
 
@@ -451,7 +451,7 @@ function drawFooter(ctx: CanvasRenderingContext2D) {
   ctx.font = '500 20px "Inter", -apple-system, sans-serif'
   ctx.fillStyle = 'rgba(255,255,255,0.4)'
   ctx.fillText(
-    'mototrack.app  ·  © OpenStreetMap contributors',
+    'mototrack.app  ·  © OpenStreetMap contributors · © CARTO',
     CANVAS_W / 2,
     CANVAS_H - 48,
   )
@@ -467,7 +467,7 @@ async function drawTile(
   anchorX: number,
   anchorY: number,
 ): Promise<void> {
-  const url = `https://tile.openstreetmap.org/${z}/${tx}/${ty}.png`
+  const url = `https://basemaps.cartocdn.com/dark_all/${z}/${tx}/${ty}.png`
   const destX = tx * TILE_SIZE - anchorX
   const destY = ty * TILE_SIZE - anchorY
   try {

@@ -1,14 +1,16 @@
 /* MotoTrack service worker — minimal hand-rolled (vite-plugin-pwa does not
  * yet support Vite 8). Two jobs:
- *   1. CacheFirst for OSM tiles during normal map viewing, so repeating a
- *      route or zoom level is instant on bad networks. NOT used for PNG
- *      export (which always fetches fresh to respect OSM policy).
+ *   1. CacheFirst for CARTO dark tiles during normal map viewing, so repeating
+ *      a route or zoom level is instant on bad networks. NOT used for PNG
+ *      export (which always fetches fresh to respect tile-provider policy).
  *   2. Offline shell: cache the built HTML/JS/CSS so the app opens without
  *      a network (users on rides in rural areas may have no signal).
  */
 
 const SHELL_CACHE = 'mototrack-shell-v1'
-const TILE_CACHE = 'mototrack-tiles-v1'
+// v2: switched tile provider from OSM to CARTO Dark Matter. Bump evicts the
+// stale OSM tile cache on the next activation.
+const TILE_CACHE = 'mototrack-tiles-v2'
 const TILE_CACHE_MAX_ENTRIES = 200
 
 self.addEventListener('install', (event) => {
@@ -38,8 +40,8 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url)
 
-  // OSM tiles — CacheFirst.
-  if (url.host === 'tile.openstreetmap.org') {
+  // CARTO dark tiles — CacheFirst.
+  if (url.host === 'basemaps.cartocdn.com') {
     event.respondWith(cacheFirst(TILE_CACHE, req))
     return
   }

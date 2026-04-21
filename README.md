@@ -112,7 +112,7 @@ To deploy manually from your Mac instead, `npm run deploy` still works
 ## Architecture
 
 - **Framework:** React 19 + Vite 8 + TypeScript, Tailwind v3, React Router.
-- **Map:** Leaflet + OpenStreetMap tiles (free, no API key).
+- **Map:** Leaflet + CARTO Dark Matter tiles (built on OpenStreetMap data, free, no API key).
 - **Local storage:** Dexie (IndexedDB) — `src/features/storage/`.
 - **State:** Zustand store for the active recording session.
 - **PNG share image:** pure-canvas compositor in

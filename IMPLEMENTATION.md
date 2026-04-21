@@ -99,7 +99,7 @@ The living map of what exists in this repo and where. **Update this file every t
 
 ## Share
 
-- `src/features/share/exportPng.ts` — pure-canvas compositor that renders a 1080×1920 Instagram-Story PNG: multiply-tinted OSM map hero with route halo, brand-gradient wash (orange → magenta → violet), MotoTrack logo + wordmark redrawn from `public/icon-512.svg` paths, ride title in brand gradient, optional bike chip, two hero stat tiles (Distance + Top Speed) with gradient-filled values, and a 3×2 grid of the remaining stats. Awaits `document.fonts.ready` so Space Grotesk / Inter paint correctly. No DOM rasterisation — everything goes through `CanvasRenderingContext2D`
+- `src/features/share/exportPng.ts` — pure-canvas compositor that renders a 1080×1920 Instagram-Story PNG: multiply-tinted CARTO Dark Matter map hero with route halo, brand-gradient wash (orange → magenta → violet), MotoTrack logo + wordmark redrawn from `public/icon-512.svg` paths, ride title in brand gradient, optional bike chip, two hero stat tiles (Distance + Top Speed) with gradient-filled values, and a 3×2 grid of the remaining stats. Awaits `document.fonts.ready` so Space Grotesk / Inter paint correctly. No DOM rasterisation — everything goes through `CanvasRenderingContext2D`
 - `src/features/share/exportPng.test.ts` — stubs `fetch` + `createImageBitmap` + `canvas.toBlob` under jsdom; asserts the short-ride guard throws and that the compositor produces an 1080×1920 PNG blob
 - `src/features/share/projection.ts` — Web Mercator helpers for tile coordinates
 - `src/features/share/share.ts` — web `sharePng()` wrapper (Web Share API with files on iOS 15+/Android Chrome 89+, download fallback). On mobile the share sheet exposes "Add to Instagram Story" / "WhatsApp Status" / etc. directly — no platform-specific code needed
@@ -108,7 +108,7 @@ The living map of what exists in this repo and where. **Update this file every t
 ## PWA
 
 - `public/manifest.webmanifest` — PWA manifest (standalone, dark theme, maskable SVG icons)
-- `public/sw.js` — hand-rolled service worker (CacheFirst for OSM tiles, NetworkFirst for navigations)
+- `public/sw.js` — hand-rolled service worker (CacheFirst for CARTO dark tiles, NetworkFirst for navigations)
 - `src/features/pwa/registerSW.ts` — registers `/sw.js` in production only
 - `src/features/pwa/useInstallPrompt.ts` — PWA install prompt hook
 - `src/components/InstallHint.tsx` — iOS "Add to Home Screen" hint

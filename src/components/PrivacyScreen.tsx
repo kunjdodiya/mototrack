@@ -91,9 +91,10 @@ export default function PrivacyScreen() {
         <p>
           MotoTrack never sells your data and never shares it with any third
           party for advertising. The only outbound traffic from the app is to
-          our own Supabase project (rides + bikes) and to OpenStreetMap tile
-          servers (map background — your IP address is visible to them in the
-          normal course of an HTTP request, but no ride data is sent).
+          our own Supabase project (rides + bikes) and to CARTO's tile servers
+          (map background, built on OpenStreetMap data — your IP address is
+          visible to them in the normal course of an HTTP request, but no ride
+          data is sent).
         </p>
       </Section>
 
