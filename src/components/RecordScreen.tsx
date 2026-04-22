@@ -159,20 +159,20 @@ export default function RecordScreen() {
   return (
     <div
       className={[
-        'mx-auto flex max-w-xl flex-col px-5 pb-3 pt-4',
-        idle ? 'h-full gap-3' : 'gap-6 pt-8 pb-6',
+        'mx-auto flex max-w-xl flex-col gap-6 px-5 pb-6 pt-8',
+        idle ? 'h-full' : '',
       ].join(' ')}
     >
       {idle ? (
         <>
-          <header className="flex shrink-0 flex-col">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">
+          <header className="flex shrink-0 flex-col gap-2">
+            <span className="text-xs font-semibold uppercase tracking-[0.22em] text-neutral-500">
               Ride Now
             </span>
-            <h1 className="font-display text-[26px] font-bold leading-[1.15]">
+            <h1 className="font-display text-4xl font-bold leading-tight">
               Ready to <span className="text-gradient">roll</span>?
             </h1>
-            <p className="mt-1 text-[13px] text-neutral-400">
+            <p className="text-sm text-neutral-400">
               {isNative
                 ? 'Tap Start and ride — tracking runs in the background.'
                 : 'Tap Start, keep the screen on, and ride.'}
@@ -182,21 +182,50 @@ export default function RecordScreen() {
           {firstTime && (
             <section
               aria-label="What you'll get"
-              className="shrink-0 rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-2"
+              className="shrink-0 rounded-2xl border border-white/5 bg-white/[0.03] p-5"
             >
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-moto-orange">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-moto-orange">
                 First ride?
               </p>
-              <p className="mt-0.5 text-[13px] leading-snug text-neutral-300">
-                Records route, top speed, average speed and distance live.
-                Stop to get a summary and a shareable story card for
-                Instagram, WhatsApp and more.
+              <p className="mt-2 text-sm text-neutral-300">
+                Tap Start and ride — MotoTrack records your route, speed and
+                distance live. When you stop, you'll get a detailed summary
+                and a shareable story card ready for Instagram, WhatsApp and
+                any other social app.
               </p>
+              <ul className="mt-4 flex flex-col gap-2 text-sm text-neutral-300">
+                <li className="flex items-start gap-2.5">
+                  <span
+                    aria-hidden
+                    className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-gradient"
+                  />
+                  <span>Live speed, distance and route as you ride.</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span
+                    aria-hidden
+                    className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-gradient"
+                  />
+                  <span>
+                    A full summary when you stop — top speed, average speed,
+                    duration and your exact map.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span
+                    aria-hidden
+                    className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-gradient"
+                  />
+                  <span>
+                    One-tap share to Instagram, WhatsApp and other social apps.
+                  </span>
+                </li>
+              </ul>
             </section>
           )}
 
-          <div className="flex shrink-0 flex-col gap-2">
-            <label className="flex flex-col gap-1">
+          <div className="flex shrink-0 flex-col gap-3">
+            <label className="flex flex-col gap-1.5">
               <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
                 Ride name
               </span>
@@ -206,11 +235,11 @@ export default function RecordScreen() {
                 onChange={(e) => setRideName(e.target.value)}
                 placeholder="E.g. Sunday morning twisties"
                 maxLength={60}
-                className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-2.5 text-base font-medium text-white placeholder:text-neutral-600 transition focus:border-moto-orange/60 focus:bg-white/[0.05] focus:outline-none"
+                className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3.5 text-base font-medium text-white placeholder:text-neutral-600 transition focus:border-moto-orange/60 focus:bg-white/[0.05] focus:outline-none"
               />
             </label>
 
-            <label className="flex flex-col gap-1">
+            <label className="flex flex-col gap-1.5">
               <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
                 Bike
               </span>
@@ -233,13 +262,13 @@ export default function RecordScreen() {
                     placeholder="E.g. KTM 390 Duke"
                     maxLength={40}
                     autoFocus={showAddBike}
-                    className="flex-1 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-2.5 text-base font-medium text-white placeholder:text-neutral-600 transition focus:border-moto-orange/60 focus:bg-white/[0.05] focus:outline-none"
+                    className="flex-1 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3.5 text-base font-medium text-white placeholder:text-neutral-600 transition focus:border-moto-orange/60 focus:bg-white/[0.05] focus:outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => void handleAddBike()}
                     disabled={addingBike || !newBike.trim()}
-                    className="rounded-2xl bg-brand-gradient px-5 py-2.5 font-display font-semibold tracking-tight text-white shadow-glow-orange transition active:scale-[0.98] disabled:opacity-40"
+                    className="rounded-2xl bg-brand-gradient px-5 py-3.5 font-display font-semibold tracking-tight text-white shadow-glow-orange transition active:scale-[0.98] disabled:opacity-40"
                   >
                     Add
                   </button>
@@ -250,7 +279,7 @@ export default function RecordScreen() {
                         setNewBike('')
                         setShowAddBike(false)
                       }}
-                      className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-neutral-300 transition active:scale-[0.98] hover:bg-white/[0.06]"
+                      className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-sm font-semibold text-neutral-300 transition active:scale-[0.98] hover:bg-white/[0.06]"
                     >
                       Cancel
                     </button>
@@ -267,7 +296,7 @@ export default function RecordScreen() {
                     }
                     setSelectedBikeId(v)
                   }}
-                  className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-2.5 text-base font-medium text-white transition focus:border-moto-orange/60 focus:bg-white/[0.05] focus:outline-none"
+                  className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3.5 text-base font-medium text-white transition focus:border-moto-orange/60 focus:bg-white/[0.05] focus:outline-none"
                 >
                   <option value="">Select</option>
                   {bikes.map((b) => (
@@ -291,7 +320,7 @@ export default function RecordScreen() {
             </div>
           </div>
 
-          <div className="animate-scale-in shrink-0">
+          <div className="animate-scale-in shrink-0 pt-2">
             <SwipeToStartButton onConfirm={handleStart} />
           </div>
 
