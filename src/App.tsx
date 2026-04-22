@@ -5,11 +5,11 @@ import BottomTabBar from './components/BottomTabBar'
 export default function App() {
   const location = useLocation()
   return (
-    <div className="relative flex min-h-full flex-col">
+    <div className="relative flex h-full flex-col">
       <InstallHint />
       <main
         key={location.pathname}
-        className="page-enter flex-1 pb-[calc(88px+env(safe-area-inset-bottom))]"
+        className="page-enter min-h-0 flex-1 overflow-y-auto"
       >
         <Outlet />
       </main>

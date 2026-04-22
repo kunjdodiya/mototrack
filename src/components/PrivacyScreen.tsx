@@ -5,7 +5,8 @@ const CONTACT_EMAIL = 'support@mototrack.app'
 
 export default function PrivacyScreen() {
   return (
-    <div className="mx-auto max-w-2xl px-6 py-10 text-neutral-200">
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto max-w-2xl px-6 py-10 text-neutral-200">
       <Link
         to="/"
         className="mb-8 inline-block text-sm text-neutral-400 hover:text-neutral-200"
@@ -165,6 +166,7 @@ export default function PrivacyScreen() {
           .
         </p>
       </Section>
+      </div>
     </div>
   )
 }

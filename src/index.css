@@ -6,6 +6,15 @@ html, body, #root {
   height: 100%;
 }
 
+html, body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+#root {
+  height: 100dvh;
+}
+
 html {
   background: #07070a;
 }

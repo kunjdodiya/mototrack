@@ -18,7 +18,7 @@ export default function SignInScreen() {
   }
 
   return (
-    <div className="relative flex min-h-full flex-col items-center justify-center gap-10 overflow-hidden px-6 py-10">
+    <div className="relative flex h-full min-h-full flex-col items-center justify-center gap-10 overflow-y-auto px-6 py-10">
       <div
         aria-hidden
         className="pointer-events-none absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-brand-gradient opacity-30 blur-3xl"
