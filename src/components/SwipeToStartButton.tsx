@@ -13,7 +13,7 @@ const THRESHOLD = 0.85
 export default function SwipeToStartButton({
   onConfirm,
   disabled = false,
-  label = 'Swipe to start ride',
+  label = 'Swipe to start the ride',
 }: Props) {
   const trackElRef = useRef<HTMLDivElement | null>(null)
   const fired = useRef(false)
