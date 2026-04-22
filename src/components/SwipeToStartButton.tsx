@@ -6,7 +6,7 @@ type Props = {
   label?: string
 }
 
-const KNOB_SIZE = 56
+const KNOB_SIZE = 64
 const EDGE_PAD = 4
 const THRESHOLD = 0.85
 
@@ -75,7 +75,7 @@ export default function SwipeToStartButton({
   return (
     <div
       className={[
-        'h-14 w-full rounded-full bg-brand-gradient bg-[length:200%_200%] p-[2px]',
+        'h-16 w-full rounded-full bg-brand-gradient bg-[length:200%_200%] p-[2px]',
         disabled ? 'opacity-40' : 'animate-gradient-shift shadow-glow-orange',
       ].join(' ')}
     >
@@ -123,7 +123,7 @@ export default function SwipeToStartButton({
         <div
           aria-hidden
           className={[
-            'absolute flex h-12 w-12 items-center justify-center rounded-full bg-white text-moto-ink shadow-[0_8px_24px_-6px_rgba(0,0,0,0.6)]',
+            'absolute flex h-14 w-14 items-center justify-center rounded-full bg-white text-moto-ink shadow-[0_8px_24px_-6px_rgba(0,0,0,0.6)]',
             dragging ? '' : 'transition-transform duration-300 ease-out',
           ].join(' ')}
           style={{
