@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -13,10 +13,12 @@ import { platform } from '../features/platform'
 import { db } from '../features/storage/db'
 import { addBike } from '../features/storage/bikes'
 import { pushBike } from '../features/storage/sync'
+import type { TrackPoint } from '../types/ride'
 import LiveStats from './LiveStats'
 import RideMap from './RideMap'
 import LocationBlockedCard from './LocationBlockedCard'
 import ForgotToStopSheet from './ForgotToStopSheet'
+import SwipeToStartButton from './SwipeToStartButton'
 
 const isNative = Capacitor.isNativePlatform()
 
@@ -67,6 +69,35 @@ export default function RecordScreen() {
   const recording = status === 'recording'
   const paused = status === 'paused'
   const saving = status === 'saving'
+
+  const [previewPoint, setPreviewPoint] = useState<TrackPoint | null>(null)
+  const previewStopRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    if (!idle) return
+    let cancelled = false
+    void (async () => {
+      const perm = await platform.checkLocationPermission()
+      if (cancelled || perm !== 'granted') return
+      const stopWatch = platform.watchPosition(
+        (p) => {
+          if (!cancelled) setPreviewPoint(p)
+        },
+        () => {},
+      )
+      if (cancelled) {
+        stopWatch()
+        return
+      }
+      previewStopRef.current = stopWatch
+    })()
+    return () => {
+      cancelled = true
+      previewStopRef.current?.()
+      previewStopRef.current = null
+      setPreviewPoint(null)
+    }
+  }, [idle])
 
   const handleStart = () => {
     playStartChime()
@@ -274,23 +305,18 @@ export default function RecordScreen() {
             </label>
           </div>
 
-          <div className="flex animate-scale-in flex-col items-center justify-center gap-3 pt-4">
-            <button
-              type="button"
-              onClick={handleStart}
-              aria-label="Start ride"
-              className="group relative flex h-44 w-44 items-center justify-center rounded-full bg-brand-gradient text-xl font-display font-bold tracking-tight text-white shadow-glow-orange transition-transform duration-200 active:scale-95"
-            >
-              <span
-                aria-hidden
-                className="absolute inset-0 animate-pulse-ring rounded-full bg-brand-gradient"
+          <div className="animate-fade-up rounded-2xl border border-white/10 bg-white/[0.03] p-[2px]">
+            <div className="h-56 overflow-hidden rounded-[14px] bg-neutral-950">
+              <RideMap
+                points={previewPoint ? [previewPoint] : []}
+                follow={!!previewPoint}
+                className="h-full bg-neutral-950"
               />
-              <span
-                aria-hidden
-                className="absolute inset-0 rounded-full bg-white/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-              />
-              <span className="relative">Start</span>
-            </button>
+            </div>
+          </div>
+
+          <div className="animate-scale-in pt-2">
+            <SwipeToStartButton onConfirm={handleStart} />
           </div>
 
           {error && (

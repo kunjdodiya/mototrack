@@ -32,7 +32,11 @@ vi.mock('../features/recorder/sound', () => ({
   playStopChime: vi.fn(),
 }))
 vi.mock('../features/platform', () => ({
-  platform: { hapticTap: vi.fn() },
+  platform: {
+    hapticTap: vi.fn(),
+    checkLocationPermission: vi.fn().mockResolvedValue('prompt'),
+    watchPosition: vi.fn(() => () => {}),
+  },
 }))
 
 function frameOf(mapEl: HTMLElement): HTMLElement {
@@ -81,6 +85,16 @@ describe('RecordScreen live map frame', () => {
     expect(card.textContent).toMatch(/Instagram/i)
     expect(card.textContent).toMatch(/WhatsApp/i)
     expect(getByText(/top speed, average speed/i)).toBeDefined()
+  })
+
+  it('renders the live preview map + swipe-to-start button on idle', () => {
+    const { getByTestId } = render(
+      <MemoryRouter>
+        <RecordScreen />
+      </MemoryRouter>,
+    )
+    expect(getByTestId('live-map')).toBeDefined()
+    expect(getByTestId('swipe-to-start')).toBeDefined()
   })
 
   it('dims the frame and stops the animation while paused', () => {
