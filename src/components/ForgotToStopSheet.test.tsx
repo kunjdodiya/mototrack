@@ -71,6 +71,29 @@ describe('ForgotToStopSheet', () => {
     expect(onConfirm).toHaveBeenCalledWith(NOW - 2 * 3600_000)
   })
 
+  it('anchors presets on endReference when provided (recap "trim" mode)', () => {
+    const onConfirm = vi.fn()
+    // Ride ran from 10 hr ago to 3 hr ago, user opens the sheet now.
+    const rideEnd = NOW - 3 * 3600_000
+    const rideStart = NOW - 10 * 3600_000
+    const { getByText } = render(
+      <ForgotToStopSheet
+        startedAt={rideStart}
+        endReference={rideEnd}
+        points={[point(10 * 3600_000), point(4 * 3600_000)]}
+        liveDistanceMeters={1000}
+        liveDurationMs={7 * 3600_000}
+        onConfirm={onConfirm}
+        onClose={vi.fn()}
+        confirmLabel="Trim ride"
+      />,
+    )
+    fireEvent.click(getByText('1 hr ago'))
+    fireEvent.click(getByText('Trim ride'))
+    // 1 hr before the ride's end, not 1 hr before "now".
+    expect(onConfirm).toHaveBeenCalledWith(rideEnd - 3600_000)
+  })
+
   it('Cancel button calls onClose', () => {
     const onClose = vi.fn()
     const { getByText } = render(

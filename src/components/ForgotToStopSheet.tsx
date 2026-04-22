@@ -14,6 +14,18 @@ type Props = {
   liveDurationMs: number
   onConfirm: (endedAt: number) => void | Promise<void>
   onClose: () => void
+  /**
+   * The timestamp that "N min/hr ago" is relative to. Defaults to `Date.now()`
+   * for the live-recording path; pass `ride.endedAt` when trimming a finished
+   * ride from its recap screen so presets anchor on when the ride ended, not
+   * when the rider opened the sheet.
+   */
+  endReference?: number
+  /** Overrides the header copy — useful for the recap "trim" variant. */
+  eyebrow?: string
+  title?: string
+  description?: string
+  confirmLabel?: string
 }
 
 type Preset = { label: string; minutes: number }
@@ -47,13 +59,18 @@ export default function ForgotToStopSheet({
   liveDurationMs,
   onConfirm,
   onClose,
+  endReference,
+  eyebrow = 'Forgot to stop?',
+  title = 'Stop ride earlier',
+  description = "If you forgot to stop and the phone kept recording, rewind to when your ride actually ended. We'll drop everything after that.",
+  confirmLabel = 'Save trimmed ride',
 }: Props) {
-  const [now] = useState(() => Date.now())
+  const [reference] = useState(() => endReference ?? Date.now())
   const [minutes, setMinutes] = useState<number>(60)
   const [customHours, setCustomHours] = useState<string>('')
   const [submitting, setSubmitting] = useState(false)
 
-  const maxTrimMinutes = Math.max(0, Math.floor((now - startedAt) / 60000) - 1)
+  const maxTrimMinutes = Math.max(0, Math.floor((reference - startedAt) / 60000) - 1)
 
   const effectiveMinutes = useMemo(() => {
     const h = parseFloat(customHours)
@@ -66,7 +83,7 @@ export default function ForgotToStopSheet({
     maxTrimMinutes,
   )
   const tooMuch = effectiveMinutes > maxTrimMinutes
-  const cutoff = now - clampedMinutes * 60000
+  const cutoff = reference - clampedMinutes * 60000
 
   const previewDistance = useMemo(
     () => trimmedDistance(points, cutoff),
@@ -105,15 +122,12 @@ export default function ForgotToStopSheet({
 
         <header className="mt-1 flex flex-col gap-1">
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">
-            Forgot to stop?
+            {eyebrow}
           </span>
           <h2 className="font-display text-xl font-bold tracking-tight">
-            Stop ride earlier
+            {title}
           </h2>
-          <p className="text-sm text-neutral-400">
-            If you forgot to stop and the phone kept recording, rewind to when
-            your ride actually ended. We'll drop everything after that.
-          </p>
+          <p className="text-sm text-neutral-400">{description}</p>
         </header>
 
         <div className="grid grid-cols-4 gap-2">
@@ -166,13 +180,13 @@ export default function ForgotToStopSheet({
         >
           {tooMuch ? (
             <p className="text-sm text-amber-300">
-              Your ride is only {formatDuration(now - startedAt)} long. Pick a
-              smaller value.
+              Your ride is only {formatDuration(reference - startedAt)} long.
+              Pick a smaller value.
             </p>
           ) : clampedMinutes === 0 ? (
             <p className="text-sm text-neutral-400">
-              Pick a time or hours above. Zero rewind is the same as tapping
-              Stop now.
+              Pick a time or hours above. Zero rewind keeps this ride
+              unchanged.
             </p>
           ) : (
             <div className="flex flex-col gap-3">
@@ -208,7 +222,7 @@ export default function ForgotToStopSheet({
             disabled={submitting || tooMuch || clampedMinutes === 0}
             className="rounded-2xl bg-brand-gradient py-4 text-base font-semibold text-white shadow-glow-orange transition active:scale-[0.98] disabled:opacity-50"
           >
-            {submitting ? 'Saving…' : 'Save trimmed ride'}
+            {submitting ? 'Saving…' : confirmLabel}
           </button>
           <button
             type="button"

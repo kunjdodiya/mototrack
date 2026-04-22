@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { Ride } from '../types/ride'
-import { getRide, deleteRide } from '../features/storage/rides'
+import { getRide, deleteRide, trimRide } from '../features/storage/rides'
+import { pushRide } from '../features/storage/sync'
 import { renderSharePng } from '../features/share/exportPng'
 import { renderOverlayPng } from '../features/share/exportOverlayPng'
 import { platform } from '../features/platform'
@@ -10,6 +11,7 @@ import RideMap from './RideMap'
 import ShareCard from './ShareCard'
 import AddToTripSheet from './AddToTripSheet'
 import ShareFormatPicker, { type ShareFormat } from './ShareFormatPicker'
+import ForgotToStopSheet from './ForgotToStopSheet'
 
 export default function RideSummary() {
   const { id } = useParams()
@@ -17,6 +19,7 @@ export default function RideSummary() {
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const [picker, setPicker] = useState(false)
+  const [trimOpen, setTrimOpen] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -62,6 +65,16 @@ export default function RideSummary() {
     if (!confirm('Delete this ride? This cannot be undone.')) return
     await deleteRide(id)
     window.location.href = '/history'
+  }
+
+  const handleTrim = async (newEndedAt: number) => {
+    if (!id) return
+    const updated = await trimRide(id, newEndedAt)
+    setTrimOpen(false)
+    if (updated) {
+      setRide(updated)
+      void pushRide(updated)
+    }
   }
 
   const handleShare = async (format: ShareFormat) => {
@@ -145,6 +158,15 @@ export default function RideSummary() {
         </button>
       </div>
 
+      <button
+        type="button"
+        onClick={() => setTrimOpen(true)}
+        className="mx-auto -mt-2 animate-fade-up text-xs font-semibold text-neutral-400 underline decoration-dotted underline-offset-4 transition hover:text-white"
+        style={{ animationDelay: '150ms' }}
+      >
+        Forgot to stop? Trim ride →
+      </button>
+
       <p className="-mt-2 text-center text-xs text-neutral-500">
         Pick a branded Story poster or a transparent overlay you can drop on
         top of your own photo.
@@ -158,6 +180,22 @@ export default function RideSummary() {
         <ShareFormatPicker
           onPick={(format) => void handleShare(format)}
           onClose={() => setPicker(false)}
+        />
+      )}
+
+      {trimOpen && (
+        <ForgotToStopSheet
+          startedAt={ride.startedAt}
+          points={ride.track}
+          liveDistanceMeters={ride.stats.distanceMeters}
+          liveDurationMs={ride.stats.durationMs}
+          endReference={ride.endedAt}
+          eyebrow="Trim this ride"
+          title="Rewind the end"
+          description="Rewind when this ride ended if you forgot to stop and the phone kept recording. We'll drop everything after the new end."
+          confirmLabel="Trim ride"
+          onConfirm={handleTrim}
+          onClose={() => setTrimOpen(false)}
         />
       )}
 
