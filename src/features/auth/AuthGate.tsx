@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { getSession, onAuthChange, signOut } from './session'
 import SignInScreen from '../../components/SignInScreen'
 import { syncWithCloud } from '../storage/sync'
+import { startLiveSync } from '../storage/liveSync'
 
 type Status = 'loading' | 'signed-in' | 'signed-out'
 
@@ -49,7 +50,10 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (userId) void syncWithCloud().catch(() => {})
+    if (!userId) return
+    void syncWithCloud().catch(() => {})
+    const stop = startLiveSync()
+    return stop
   }, [userId])
 
   if (status === 'loading') {

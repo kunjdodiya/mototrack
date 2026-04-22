@@ -43,4 +43,10 @@ export const webPlatform: Platform = {
       // Ignore — haptics are a nice-to-have.
     }
   },
+
+  onAppResume() {
+    // Web foregrounding is surfaced by `document.visibilitychange` +
+    // `window.focus`, which liveSync hooks directly. No extra channel here.
+    return () => {}
+  },
 }

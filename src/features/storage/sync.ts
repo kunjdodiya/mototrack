@@ -243,3 +243,16 @@ export async function syncWithCloud(): Promise<void> {
   await pullRemoteRides()
   await pullRemoteBikes()
 }
+
+/**
+ * Pull-only counterpart to syncWithCloud(). Used by the live-sync loop on
+ * visibility/focus/resume and on an interval while the app is foreground, so
+ * rides recorded on another device land here without waiting for the next
+ * sign-in. Trips are pulled before rides so a ride's tripId can resolve to an
+ * already-present parent row.
+ */
+export async function pullFromCloud(): Promise<void> {
+  await pullRemoteTrips()
+  await pullRemoteRides()
+  await pullRemoteBikes()
+}

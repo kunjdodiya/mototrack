@@ -173,6 +173,18 @@ export const capacitorPlatform: Platform = {
     void Haptics.impact({ style: IMPACT_STYLE[style] }).catch(() => {})
   },
 
+  onAppResume(handler: () => void) {
+    // Fire only on background → foreground transitions. The plugin also
+    // emits `isActive: false` when the app is backgrounded; we ignore that
+    // half so the live-sync loop doesn't fire on pause.
+    const sub = App.addListener('appStateChange', (state) => {
+      if (state.isActive) handler()
+    })
+    return () => {
+      void sub.then((s) => s.remove())
+    }
+  },
+
   async sharePng(args: ShareArgs): Promise<ShareResult> {
     // Capacitor's Share plugin wants a file:// URL, not a Blob. Write the
     // PNG to the cache directory first, then hand the URI to Share.

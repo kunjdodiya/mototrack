@@ -24,6 +24,10 @@ vi.mock('../storage/sync', () => ({
   syncWithCloud: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('../storage/liveSync', () => ({
+  startLiveSync: vi.fn(() => () => {}),
+}))
+
 import AuthGate from './AuthGate'
 
 function fakeSession(id: string): Session {

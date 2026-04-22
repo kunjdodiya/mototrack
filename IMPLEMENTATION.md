@@ -30,7 +30,7 @@ The living map of what exists in this repo and where. **Update this file every t
 - `src/features/auth/session.test.ts` — covers the web/native branching of `signInWithGoogle()`
 - `src/features/auth/deepLink.ts` — `handleAuthDeepLink(url)` exchanges a Supabase PKCE `code` for a session and dismisses the in-app browser; `startAuthDeepLinkListener()` registers the platform's `appUrlOpen` subscription
 - `src/features/auth/deepLink.test.ts` — query/fragment code extraction, error-redirect handling, browser-close on success/failure, listener forwarding
-- `src/features/auth/AuthGate.tsx` — React component; renders children only when authenticated, else renders `SignInScreen`; triggers sync on first sign-in
+- `src/features/auth/AuthGate.tsx` — React component; renders children only when authenticated, else renders `SignInScreen`; calls `syncWithCloud()` on first sign-in AND starts `liveSync` so every foreground/focus/resume/tick repulls remote rows across devices (unsubscribed on sign-out)
 - `src/features/auth/AuthGate.test.tsx` — renders sign-in when no session, children when session present; mocks Supabase
 - `src/components/SignInScreen.tsx` — centered gradient logo + "Continue with Google" button + privacy-policy link; mesh-glow background
 - `src/components/SignOutButton.tsx` — rendered inside `ProfileScreen`; calls `signOut()`
@@ -38,11 +38,11 @@ The living map of what exists in this repo and where. **Update this file every t
 
 ## GPS recorder
 
-- `src/features/platform/types.ts` — `Platform` interface; typed `GeoError` with kind discriminator; native-vs-web flag (`isNative`); auth helpers (`openAuthUrl`, `closeAuthBrowser`, `onAppUrl`); `hapticTap(style)` where style is `'light' | 'medium' | 'heavy'`
+- `src/features/platform/types.ts` — `Platform` interface; typed `GeoError` with kind discriminator; native-vs-web flag (`isNative`); auth helpers (`openAuthUrl`, `closeAuthBrowser`, `onAppUrl`); `hapticTap(style)` where style is `'light' | 'medium' | 'heavy'`; `onAppResume(handler)` — native-only foreground hook used by `liveSync` (web is a no-op, covered by `document.visibilitychange` + `window.focus`)
 - `src/features/platform/index.ts` — runtime selection (web vs Capacitor)
 - `src/features/platform/web.ts` — web implementation; watchPosition, wake lock, share; includes `checkPermissionState()`; auth helpers are no-ops / full-page navigation; `hapticTap` maps styles onto the Vibration API, silent on iOS Safari
 - `src/features/platform/web.test.ts` — covers the `hapticTap` light/heavy mapping, silent no-op when `navigator.vibrate` is absent, and swallowing a thrown vibrate
-- `src/features/platform/capacitor.ts` — Capacitor implementation; uses `@capacitor-community/background-geolocation` for foreground-service GPS on Android + UIBackgroundModes on iOS; `@capacitor/browser` + `@capacitor/app` for the OAuth deep-link round-trip; `@capacitor/haptics` for Taptic Engine / vibrator pulses via `hapticTap`
+- `src/features/platform/capacitor.ts` — Capacitor implementation; uses `@capacitor-community/background-geolocation` for foreground-service GPS on Android + UIBackgroundModes on iOS; `@capacitor/browser` + `@capacitor/app` for the OAuth deep-link round-trip + `onAppResume` (`appStateChange` filtered to `isActive: true`) so `liveSync` can repull on foreground; `@capacitor/haptics` for Taptic Engine / vibrator pulses via `hapticTap`
 - `src/features/recorder/geolocation.ts` — `navigator.geolocation.watchPosition` wrapper; propagates typed PERMISSION_DENIED error
 - `src/features/recorder/smoothing.ts` — `shouldAcceptPoint()`; rejects noisy/parked GPS fixes
 - `src/features/recorder/smoothing.test.ts` — unit tests for accept/reject rules
@@ -74,8 +74,10 @@ The living map of what exists in this repo and where. **Update this file every t
 - `src/features/storage/db.ts` — Dexie v3: `rides` + `bikes` + `trips` tables. v2 added `bikes` + backfills `idleDurationMs` / `maxLeanAngleDeg` on pre-existing rides; v3 adds the `trips` table and a `tripId` index on `rides` so `where('tripId').equals(id)` is cheap
 - `src/features/storage/rides.ts` — CRUD: `saveRide`, `getRide`, `listRides`, `deleteRide`, `markSynced`
 - `src/features/storage/bikes.ts` — CRUD: `listBikes`, `getBike`, `addBike`, `renameBike`, `deleteBike`, `markBikeSynced`
-- `src/features/storage/sync.ts` — `pushRide`, `pushBike`, `pushTrip`, `syncUnsyncedRides()`, `pullRemoteRides()`, `pullRemoteBikes()`, `pullRemoteTrips()`, `syncWithCloud()`; scoped by Google user's `auth.uid()`. `AuthGate` calls `syncWithCloud()` on sign-in so rides, bikes, trips, and profile totals reconcile across every device signed into the same Google account. Trips are pushed before rides so a ride carrying a new `trip_id` references an already-persisted parent row.
+- `src/features/storage/sync.ts` — `pushRide`, `pushBike`, `pushTrip`, `syncUnsyncedRides()`, `pullRemoteRides()`, `pullRemoteBikes()`, `pullRemoteTrips()`, `pullFromCloud()`, `syncWithCloud()`; scoped by Google user's `auth.uid()`. `AuthGate` calls `syncWithCloud()` on sign-in so rides, bikes, trips, and profile totals reconcile across every device signed into the same Google account. Trips are pushed before rides so a ride carrying a new `trip_id` references an already-persisted parent row. `pullFromCloud()` is the pull-only counterpart used by the live-sync loop on foregrounding.
 - `src/features/storage/sync.test.ts` — unit tests for pull + two-way sync; mocks Dexie + Supabase + session
+- `src/features/storage/liveSync.ts` — `startLiveSync()` keeps Dexie in step with Supabase after sign-in by running `syncUnsyncedRides()` + `pullFromCloud()` whenever the tab becomes visible, the window gains focus, the native app resumes from the background, or a 90s foreground interval fires. Returns an unsubscribe fn that `AuthGate` calls on sign-out. Skips overlapping pulls while one is already in flight.
+- `src/features/storage/liveSync.test.ts` — covers visibility, focus, native-resume, interval, teardown, and the in-flight guard under fake timers
 - `src/features/storage/deviceId.ts` — stable device UUID for analytics/debugging
 - `src/features/storage/demoRide.ts` — dev-only seed for a synthetic ride
 

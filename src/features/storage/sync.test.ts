@@ -95,6 +95,7 @@ import {
   pullRemoteRides,
   pullRemoteBikes,
   pullRemoteTrips,
+  pullFromCloud,
   syncWithCloud,
 } from './sync'
 
@@ -253,6 +254,41 @@ describe('pullRemoteTrips', () => {
     expect(local?.notes).toBe('6-day loop')
     expect(local?.createdAt).toBe(1_700_000_000_000)
     expect(local?.syncedAt).toBeTypeOf('number')
+  })
+})
+
+describe('pullFromCloud', () => {
+  it('pulls trips + rides + bikes without pushing local unsynced rows', async () => {
+    rideStore.set('local-unsynced', {
+      id: 'local-unsynced',
+      deviceId: 'phone-B',
+      startedAt: 10,
+      endedAt: 20,
+      stats: emptyStats,
+      track: [],
+      syncedAt: null,
+    })
+    rideSelect.rows = [
+      {
+        id: 'remote-ride',
+        device_id: 'phone-A',
+        started_at: new Date(1000).toISOString(),
+        ended_at: new Date(2000).toISOString(),
+        stats: emptyStats,
+        track: [],
+        name: null,
+        bike_id: null,
+        trip_id: null,
+      },
+    ]
+
+    await pullFromCloud()
+
+    expect(rideUpsertSpy).not.toHaveBeenCalled()
+    expect(bikeUpsertSpy).not.toHaveBeenCalled()
+    expect(tripUpsertSpy).not.toHaveBeenCalled()
+    expect(rideStore.has('remote-ride')).toBe(true)
+    expect(rideStore.get('local-unsynced')?.syncedAt).toBeNull()
   })
 })
 

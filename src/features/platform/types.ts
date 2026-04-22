@@ -77,4 +77,14 @@ export interface Platform {
    * Vibration API. Silent on platforms without either (iOS Safari, desktop).
    */
   hapticTap(style?: HapticStyle): void
+
+  /**
+   * Subscribe to "the app just came back to the foreground" events. Returns
+   * an unsubscribe fn.
+   *  - Web: no-op. Web foregrounding is covered by `document.visibilitychange`
+   *    + `window.focus`, which the live-sync loop hooks directly.
+   *  - Native: forwards Capacitor's `appStateChange` event, firing only when
+   *    `isActive` flips from false to true (user returned from background).
+   */
+  onAppResume(handler: () => void): () => void
 }
