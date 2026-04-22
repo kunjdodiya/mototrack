@@ -74,63 +74,74 @@ export default function SwipeToStartButton({
 
   return (
     <div
-      ref={trackRef}
-      role="button"
-      tabIndex={disabled ? -1 : 0}
-      aria-label={label}
-      aria-disabled={disabled}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerEnd}
-      onPointerCancel={handlePointerEnd}
       className={[
-        'relative h-14 w-full select-none overflow-hidden rounded-full border border-white/10 bg-white/[0.04]',
-        disabled ? 'opacity-40' : 'touch-none',
+        'h-14 w-full rounded-full bg-brand-gradient bg-[length:200%_200%] p-[2px]',
+        disabled ? 'opacity-40' : 'animate-gradient-shift shadow-glow-orange',
       ].join(' ')}
-      data-testid="swipe-to-start"
     >
       <div
-        aria-hidden
-        className="absolute inset-y-0 left-0 rounded-full bg-brand-gradient"
-        style={{
-          width: effectiveDragX + KNOB_SIZE / 2 + EDGE_PAD,
-          opacity: 0.55 + progress * 0.45,
-        }}
-      />
-
-      {!dragging && progress === 0 && !disabled && (
-        <span
+        ref={trackRef}
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        aria-label={label}
+        aria-disabled={disabled}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
+        className={[
+          'relative h-full w-full select-none overflow-hidden rounded-full bg-neutral-950',
+          disabled ? '' : 'touch-none',
+        ].join(' ')}
+        data-testid="swipe-to-start"
+      >
+        <div
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-0 w-1/3 animate-shimmer bg-gradient-to-r from-transparent via-white/15 to-transparent"
+          className="absolute inset-y-0 left-0 rounded-full bg-brand-gradient"
+          style={{
+            width: effectiveDragX + KNOB_SIZE / 2 + EDGE_PAD,
+            opacity: 0.55 + progress * 0.45,
+          }}
         />
-      )}
 
-      <span
-        className={[
-          'pointer-events-none absolute inset-0 flex items-center justify-center text-xs font-semibold uppercase tracking-[0.22em] text-white transition-opacity',
-          progress > 0.1 ? 'opacity-30' : 'opacity-80',
-        ].join(' ')}
-      >
-        {label}
-      </span>
-
-      <div
-        aria-hidden
-        className={[
-          'absolute top-1 flex h-12 w-12 items-center justify-center rounded-full bg-white text-moto-ink shadow-[0_8px_24px_-6px_rgba(0,0,0,0.6)]',
-          dragging ? '' : 'transition-transform duration-300 ease-out',
-        ].join(' ')}
-        style={{ left: EDGE_PAD, transform: `translateX(${effectiveDragX}px)` }}
-      >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path
-            d="M5 12h14M13 6l6 6-6 6"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        {!dragging && progress === 0 && !disabled && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 left-0 w-1/3 animate-shimmer bg-gradient-to-r from-transparent via-white/15 to-transparent"
           />
-        </svg>
+        )}
+
+        <span
+          className={[
+            'pointer-events-none absolute inset-0 flex items-center justify-center text-xs font-semibold uppercase tracking-[0.22em] text-white transition-opacity',
+            progress > 0.1 ? 'opacity-30' : 'opacity-80',
+          ].join(' ')}
+        >
+          {label}
+        </span>
+
+        <div
+          aria-hidden
+          className={[
+            'absolute flex h-12 w-12 items-center justify-center rounded-full bg-white text-moto-ink shadow-[0_8px_24px_-6px_rgba(0,0,0,0.6)]',
+            dragging ? '' : 'transition-transform duration-300 ease-out',
+          ].join(' ')}
+          style={{
+            left: EDGE_PAD,
+            top: '50%',
+            transform: `translate(${effectiveDragX}px, -50%)`,
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path
+              d="M5 12h14M13 6l6 6-6 6"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
       </div>
     </div>
   )

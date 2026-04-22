@@ -305,7 +305,7 @@ export default function RecordScreen() {
             </label>
           </div>
 
-          <div className="animate-fade-up rounded-2xl border border-white/10 bg-white/[0.03] p-[2px]">
+          <div className="animate-fade-up animate-gradient-shift rounded-2xl bg-brand-gradient bg-[length:200%_200%] p-[2px] shadow-glow-orange">
             <div className="h-56 overflow-hidden rounded-[14px] bg-neutral-950">
               <RideMap
                 points={previewPoint ? [previewPoint] : []}
