@@ -289,7 +289,7 @@ export default function ProfileScreen() {
         <section>
           <SectionHeading title="Owner console" hint="Admins only" />
           <Link
-            to="/admin"
+            to="/dashboard"
             className="mt-3 flex items-center justify-between rounded-2xl border border-moto-orange/25 bg-gradient-to-br from-moto-orange/10 via-moto-magenta/5 to-transparent px-4 py-3 transition hover:border-moto-orange/40"
           >
             <div>
