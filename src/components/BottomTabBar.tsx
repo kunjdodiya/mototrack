@@ -30,7 +30,7 @@ export default function BottomTabBar() {
   return (
     <nav
       aria-label="Primary"
-      className="pointer-events-none flex shrink-0 justify-center px-3 pb-[max(env(safe-area-inset-bottom),12px)] pt-2"
+      className="pointer-events-none flex shrink-0 justify-center px-3 pb-[calc(env(safe-area-inset-bottom)+20px)] pt-3"
     >
       <div className="glass-strong pointer-events-auto relative grid w-full max-w-xl grid-cols-4 rounded-2xl p-1 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)]">
         <span
