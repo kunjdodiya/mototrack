@@ -29,15 +29,22 @@ body {
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: contain;
   background-color: #07070a;
+}
+
+/* Paint the gradient on #root (not body with background-attachment: fixed).
+ * iOS WebKit drops fixed backgrounds into solid black around safe-area regions
+ * when the page has infinite GPU animations (e.g. the Ride Now Start button's
+ * pulse-ring). #root has an explicit 100dvh height and extends under the
+ * status-bar and home-indicator via safe-area padding, so the gradient
+ * reliably fills every edge of the screen on every route. */
+#root {
+  padding-top: env(safe-area-inset-top);
+  background-color: #07070a;
   background-image:
     radial-gradient(65% 45% at 15% 0%, rgba(255, 77, 0, 0.18) 0%, transparent 70%),
     radial-gradient(60% 40% at 85% 10%, rgba(124, 58, 237, 0.18) 0%, transparent 70%),
     radial-gradient(70% 60% at 50% 100%, rgba(255, 45, 135, 0.12) 0%, transparent 70%);
-  background-attachment: fixed;
-}
-
-#root {
-  padding-top: env(safe-area-inset-top);
+  background-origin: border-box;
 }
 
 button, a {
