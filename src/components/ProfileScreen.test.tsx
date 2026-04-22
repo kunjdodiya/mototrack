@@ -48,6 +48,10 @@ vi.mock('../features/storage/documents', () => ({
   getDocumentViewUrl: vi.fn(),
 }))
 
+vi.mock('../features/admin/stats', () => ({
+  checkIsAdmin: vi.fn().mockResolvedValue(false),
+}))
+
 vi.mock('../features/storage/profile', () => ({
   getProfileInfo: (session: Session | null) => {
     const u = session?.user as

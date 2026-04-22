@@ -27,6 +27,7 @@ import {
 } from '../features/storage/documents'
 import DocumentViewer from './DocumentViewer'
 import SignOutButton from './SignOutButton'
+import { checkIsAdmin } from '../features/admin/stats'
 
 export default function ProfileScreen() {
   const [profile, setProfile] = useState<ProfileInfo>({
@@ -38,6 +39,7 @@ export default function ProfileScreen() {
   const [adding, setAdding] = useState(false)
   const [avatarBusy, setAvatarBusy] = useState(false)
   const [avatarError, setAvatarError] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const hasGoogleAvatar = Boolean(profile.avatarUrl)
 
@@ -45,6 +47,16 @@ export default function ProfileScreen() {
     void getSession().then((s) => setProfile(getProfileInfo(s)))
     return onAuthChange((s) => setProfile(getProfileInfo(s)))
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    void checkIsAdmin().then((ok) => {
+      if (!cancelled) setIsAdmin(ok)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [profile.email])
 
   const rides = useLiveQuery(() => db.rides.toArray(), [], [])
   const bikes = useLiveQuery(() => db.bikes.orderBy('createdAt').toArray(), [], [])
@@ -272,6 +284,26 @@ export default function ProfileScreen() {
       </section>
 
       <LegalDocumentsSection />
+
+      {isAdmin && (
+        <section>
+          <SectionHeading title="Owner console" hint="Admins only" />
+          <Link
+            to="/admin"
+            className="mt-3 flex items-center justify-between rounded-2xl border border-moto-orange/25 bg-gradient-to-br from-moto-orange/10 via-moto-magenta/5 to-transparent px-4 py-3 transition hover:border-moto-orange/40"
+          >
+            <div>
+              <div className="font-display font-semibold tracking-tight text-gradient">
+                Open dashboard
+              </div>
+              <div className="text-xs text-neutral-400">
+                Users, active riders, rides, signups chart
+              </div>
+            </div>
+            <span className="text-lg text-neutral-400">→</span>
+          </Link>
+        </section>
+      )}
 
       <section className="flex justify-center pt-2">
         <SignOutButton />

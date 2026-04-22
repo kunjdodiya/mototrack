@@ -98,6 +98,20 @@ Trips let riders group multiple ride sessions into one combined recap.
 
 Until this runs, the Trips tab shows no cloud data and new trips only live on the device that created them.
 
+## 7c. Admin dashboard (owner/developer)
+
+The `/admin` route is a private dashboard showing total users, active riders, ride totals, a 30-day signups chart, top riders, and recent signups.
+
+1. Dashboard → **SQL Editor** → New query → paste the contents of [`supabase/admin.sql`](../supabase/admin.sql) → Run.
+2. Idempotent — safe to re-run. Creates `public.admins` (email allowlist, RLS-locked) plus two `security definer` RPCs: `am_i_admin()` (cheap boolean check) and `admin_dashboard()` (one-shot aggregate). Both raise `insufficient_privilege` for callers whose email isn't in the allowlist.
+3. The owner's email (`kunjdodiya@gmail.com`) is seeded on first run. To grant another person admin access later, run:
+   ```sql
+   insert into public.admins (email) values ('friend@example.com');
+   ```
+   No code change or redeploy needed. To revoke: `delete from public.admins where email = '…';`.
+
+After running, sign into the app with an allowlisted Google account and open **My profile** — you'll see an **Owner console → Open dashboard** card. The `/admin` URL is also directly navigable.
+
 ## 8. Apple-specific: distribution certificate + provisioning profile
 
 Xcode handles most of this automatically once your Apple ID is part of the Developer Program:

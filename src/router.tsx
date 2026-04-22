@@ -14,6 +14,7 @@ import NewTripScreen from './components/NewTripScreen'
 import TripDetailScreen from './components/TripDetailScreen'
 import AuthCallback from './components/AuthCallback'
 import PrivacyScreen from './components/PrivacyScreen'
+import AdminScreen from './components/AdminScreen'
 import AuthGate from './features/auth/AuthGate'
 
 export const router = createBrowserRouter([
@@ -42,6 +43,7 @@ export const router = createBrowserRouter([
       { path: 'community/events/new', element: <NewEventScreen /> },
       { path: 'community/events/:id', element: <EventDetailScreen /> },
       { path: 'profile', element: <ProfileScreen /> },
+      { path: 'admin', element: <AdminScreen /> },
     ],
   },
 ])
