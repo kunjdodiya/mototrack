@@ -110,7 +110,12 @@ The `/admin` route is a private dashboard showing total users, active riders, ri
    ```
    No code change or redeploy needed. To revoke: `delete from public.admins where email = '…';`.
 
-After running, sign into the app with an allowlisted Google account and open **My profile** — you'll see an **Owner console → Open dashboard** card. The `/admin` URL is also directly navigable.
+After running, sign into the app with an allowlisted Google account. Two entry points:
+
+- **`/admin`** — the owner console rendered inside the mobile app shell (reachable via **My profile → Owner console → Open dashboard**).
+- **`/dashboard`** — a standalone, bookmarkable web page with a desktop-style top nav (no bottom tab bar). Same content, better for keeping open on a monitor.
+
+Both pull the same data; pick whichever fits your surface.
 
 ## 8. Apple-specific: distribution certificate + provisioning profile
 

@@ -15,6 +15,7 @@ import TripDetailScreen from './components/TripDetailScreen'
 import AuthCallback from './components/AuthCallback'
 import PrivacyScreen from './components/PrivacyScreen'
 import AdminScreen from './components/AdminScreen'
+import DashboardPage from './components/DashboardPage'
 import AuthGate from './features/auth/AuthGate'
 
 export const router = createBrowserRouter([
@@ -23,6 +24,16 @@ export const router = createBrowserRouter([
   // Play Store listings link directly to it and must reach it without a
   // Google sign-in.
   { path: '/privacy', element: <PrivacyScreen /> },
+  // Standalone owner console — inside AuthGate but OUTSIDE the <App> shell,
+  // so no bottom tab bar / install hint / mobile chrome. Bookmarkable.
+  {
+    path: '/dashboard',
+    element: (
+      <AuthGate>
+        <DashboardPage />
+      </AuthGate>
+    ),
+  },
   {
     path: '/',
     element: (
