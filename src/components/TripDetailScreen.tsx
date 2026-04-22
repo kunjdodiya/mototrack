@@ -151,7 +151,7 @@ export default function TripDetailScreen() {
           </div>
           <div className="min-w-0 flex-1">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/80">
-              Multi-day trip
+              Multi-session trip
             </span>
             <h1 className="truncate font-display text-2xl font-bold leading-tight tracking-tight">
               {trip.name}
@@ -181,8 +181,8 @@ export default function TripDetailScreen() {
         style={{ animationDelay: '60ms' }}
       >
         <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">
-          Combined stats · {combined.dayCount} day
-          {combined.dayCount === 1 ? '' : 's'}
+          Combined stats · {combined.sessionCount} session
+          {combined.sessionCount === 1 ? '' : 's'}
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2">
           <Stat label="Distance" value={formatDistance(combined.distanceMeters)} />
@@ -196,7 +196,7 @@ export default function TripDetailScreen() {
             label="Elev gain"
             value={formatElevation(combined.elevationGainMeters)}
           />
-          <Stat label="Days" value={String(combined.dayCount)} />
+          <Stat label="Sessions" value={String(combined.sessionCount)} />
         </div>
       </section>
 
@@ -242,7 +242,7 @@ export default function TripDetailScreen() {
                 <div className="flex items-center gap-3 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
                   <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-brand-gradient-soft text-white shadow-glow-orange">
                     <span className="font-display text-[10px] font-semibold uppercase tracking-wider">
-                      Day
+                      Session
                     </span>
                     <span className="font-display text-lg font-bold leading-none">
                       {i + 1}
@@ -263,7 +263,7 @@ export default function TripDetailScreen() {
                   <button
                     type="button"
                     onClick={() => void handleRemoveRide(r.id)}
-                    aria-label={`Remove day ${i + 1} from trip`}
+                    aria-label={`Remove session ${i + 1} from trip`}
                     className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-neutral-300 transition hover:border-white/20 active:scale-[0.97]"
                   >
                     Remove
@@ -297,8 +297,8 @@ export default function TripDetailScreen() {
       </div>
 
       <p className="-mt-2 text-center text-xs text-neutral-500">
-        Pick a branded Story poster or a transparent overlay with the multi-day
-        route and combined distance + time.
+        Pick a branded Story poster or a transparent overlay with the
+        multi-session route and combined distance + time.
       </p>
 
       {exportError && (

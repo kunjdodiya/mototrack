@@ -21,7 +21,7 @@ export default function TripsList() {
             My Trips
           </span>
           <h1 className="font-display text-4xl font-bold leading-tight">
-            Multi-day <span className="text-gradient">tours</span>.
+            Multi-session <span className="text-gradient">tours</span>.
           </h1>
         </div>
         <Link
@@ -61,9 +61,9 @@ export default function TripsList() {
                       </h3>
                       <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-neutral-400">
                         <span className="font-mono tabular-nums text-neutral-200">
-                          {combined.dayCount} day{combined.dayCount === 1 ? '' : 's'}
+                          {combined.sessionCount} session{combined.sessionCount === 1 ? '' : 's'}
                         </span>
-                        {combined.dayCount > 0 && (
+                        {combined.sessionCount > 0 && (
                           <>
                             <span className="text-neutral-600">·</span>
                             <span className="font-mono tabular-nums">
@@ -99,7 +99,7 @@ function EmptyState() {
           No trips yet
         </h2>
         <p className="mt-1 text-sm text-neutral-400">
-          Tours live here. Combine every day of a long ride into one recap.
+          Tours live here. Combine every session of a long ride into one recap.
         </p>
       </div>
       <Link

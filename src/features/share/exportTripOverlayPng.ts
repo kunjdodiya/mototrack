@@ -19,7 +19,7 @@ const STATS_Y = 1720
 
 // Matches TripMap / exportTripPng so the same route keeps the same colors
 // across every surface the rider sees it on.
-const DAY_COLORS = [
+const SESSION_COLORS = [
   '#ff4d00',
   '#ff2d87',
   '#7c3aed',
@@ -36,8 +36,9 @@ type ExportOpts = {
 }
 
 /**
- * 1080×1920 transparent PNG overlay for a whole trip: every day's route on
- * one map in per-day colors, a combined speed graph stitched across days,
+ * 1080×1920 transparent PNG overlay for a whole trip: every session's route
+ * on one map in per-session colors, a combined speed graph stitched across
+ * sessions,
  * and the two headline numbers (total distance + total moving time).
  * Background is fully transparent so it can sit on top of any photo.
  */
@@ -95,7 +96,7 @@ function drawTripRoute(ctx: CanvasRenderingContext2D, rides: Ride[]) {
   ctx.lineJoin = 'round'
 
   rides.forEach((r, i) => {
-    const color = DAY_COLORS[i % DAY_COLORS.length]
+    const color = SESSION_COLORS[i % SESSION_COLORS.length]
     ctx.beginPath()
     for (let j = 0; j < r.track.length; j++) {
       const wp = lngLatToWorldPx(r.track[j].lng, r.track[j].lat, zoom)
@@ -123,7 +124,7 @@ function drawTripRoute(ctx: CanvasRenderingContext2D, rides: Ride[]) {
 }
 
 function drawTripSpeedGraph(ctx: CanvasRenderingContext2D, rides: Ride[]) {
-  // Stitch every day's track end-to-end so the graph reads as one journey.
+  // Stitch every session's track end-to-end so the graph reads as one journey.
   const concatenated: TrackPoint[] = []
   for (const r of rides) concatenated.push(...r.track)
 

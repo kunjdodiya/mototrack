@@ -52,7 +52,7 @@ export async function markTripSynced(id: string, syncedAt: number): Promise<void
   await db.trips.update(id, { syncedAt })
 }
 
-/** Rides attached to a trip, ordered oldest first so Day 1/Day 2 reads top-down. */
+/** Rides attached to a trip, ordered oldest first so Session 1/Session 2 reads top-down. */
 export async function listRidesForTrip(tripId: string): Promise<Ride[]> {
   const rides = await db.rides.where('tripId').equals(tripId).toArray()
   return rides.sort((a, b) => a.startedAt - b.startedAt)

@@ -23,7 +23,7 @@ type Props = {
  * Full-screen modal listing the rider's history rides with checkboxes so they
  * can multi-select and attach several rides to a trip in one go.
  *
- * Rides already in *this* trip are hidden (they show in the Day-by-day list).
+ * Rides already in *this* trip are hidden (they show in the Session-by-session list).
  * Rides in *another* trip render disabled with the other trip's name so the
  * rider sees why they can't select them — a ride only belongs to one trip at
  * a time, and detaching must happen on that ride's own summary screen.

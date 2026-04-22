@@ -130,10 +130,10 @@ describe('trips CRUD', () => {
     const t = await createTrip({
       name: 'Coastal run',
       coverColor: 'neon',
-      notes: '  6-day loop  ',
+      notes: '  6-session loop  ',
     })
     expect(t.coverColor).toBe('neon')
-    expect(t.notes).toBe('6-day loop')
+    expect(t.notes).toBe('6-session loop')
   })
 
   it('lists trips newest first', async () => {

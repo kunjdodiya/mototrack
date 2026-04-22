@@ -24,9 +24,9 @@ const MAP_TOP = 0
 const MAP_BOTTOM = 1120
 const STATS_TOP = 1120
 
-// Per-day palette — matches TripMap so the in-app preview and the exported
+// Per-session palette — matches TripMap so the in-app preview and the exported
 // poster show the same colors in the same order.
-const DAY_COLORS = [
+const SESSION_COLORS = [
   '#ff4d00',
   '#ff2d87',
   '#7c3aed',
@@ -44,8 +44,8 @@ type ExportOpts = {
 
 /**
  * Render an Instagram-Story-sized (1080×1920) share image for a trip.
- * Each day's route is drawn in its own color on a single combined map, and
- * the stats panel shows trip-wide totals with a day count hero tile.
+ * Each session's route is drawn in its own color on a single combined map,
+ * and the stats panel shows trip-wide totals with a session count hero tile.
  */
 export async function renderTripSharePng({
   trip,
@@ -133,10 +133,10 @@ async function drawTripMapHero(
   mctx.lineCap = 'round'
   mctx.lineJoin = 'round'
 
-  // Paint every day's route with a white halo + per-day colored core so the
-  // multi-day geometry reads cleanly on the dark map.
+  // Paint every session's route with a white halo + per-session colored core
+  // so the multi-session geometry reads cleanly on the dark map.
   rides.forEach((r, i) => {
-    const color = DAY_COLORS[i % DAY_COLORS.length]
+    const color = SESSION_COLORS[i % SESSION_COLORS.length]
     mctx.beginPath()
     for (let j = 0; j < r.track.length; j++) {
       const p = r.track[j]
@@ -242,7 +242,7 @@ function drawHeaderLogo(ctx: CanvasRenderingContext2D) {
     '600 22px "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   ctx.fillStyle = 'rgba(255,255,255,0.75)'
   ctx.textBaseline = 'alphabetic'
-  ctx.fillText('MULTI  ·  DAY  ·  TRIP', textX, logoY + logoSize + 24)
+  ctx.fillText('MULTI  ·  SESSION  ·  TRIP', textX, logoY + logoSize + 24)
 }
 
 function drawTripTitle(
@@ -296,7 +296,7 @@ function drawTripStats(ctx: CanvasRenderingContext2D, rides: Ride[]) {
   const hero: StatCell[] = [
     { label: 'TOTAL DISTANCE', value: formatDistance(combined.distanceMeters) },
     {
-      label: `${combined.dayCount} DAY${combined.dayCount === 1 ? '' : 'S'}`,
+      label: `${combined.sessionCount} SESSION${combined.sessionCount === 1 ? '' : 'S'}`,
       value: formatDuration(combined.movingDurationMs),
     },
   ]

@@ -10,7 +10,7 @@ const trips: Trip[] = [
     id: 'trip-1',
     name: 'Ladakh 2026',
     coverColor: 'aurora',
-    notes: '6-day loop',
+    notes: '6-session loop',
     createdAt: 2,
     syncedAt: null,
   },
@@ -109,7 +109,7 @@ describe('TripsList', () => {
       </MemoryRouter>,
     )
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      /multi-day/i,
+      /multi-session/i,
     )
     expect(screen.getByRole('link', { name: /new trip/i })).toHaveAttribute(
       'href',
@@ -123,10 +123,10 @@ describe('TripsList', () => {
       'href',
       '/trips/trip-2',
     )
-    // Ladakh has two rides attached → "2 days"
-    expect(screen.getByText(/2 days/i)).toBeInTheDocument()
-    // Coastal has zero → "0 days"
-    expect(screen.getByText(/0 days/i)).toBeInTheDocument()
+    // Ladakh has two rides attached → "2 sessions"
+    expect(screen.getByText(/2 sessions/i)).toBeInTheDocument()
+    // Coastal has zero → "0 sessions"
+    expect(screen.getByText(/0 sessions/i)).toBeInTheDocument()
     // Combined distance for Ladakh = 20,000 m = 20.0 km
     expect(screen.getByText(/20\.0 km/)).toBeInTheDocument()
   })

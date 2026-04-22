@@ -87,7 +87,7 @@ describe('renderTripOverlayPng', () => {
     ).rejects.toThrow(/no rides with routes/i)
   })
 
-  it('produces a 1080×1920 transparent PNG for a two-day trip', async () => {
+  it('produces a 1080×1920 transparent PNG for a two-session trip', async () => {
     const createElementSpy = vi.spyOn(document, 'createElement')
     const rides = [
       makeRide('r1', 30, 1_700_000_000_000),

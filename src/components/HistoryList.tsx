@@ -140,7 +140,7 @@ function TripsStrip({
             Trips
           </span>
           <span className="text-xs text-neutral-400">
-            Group multi-day rides into one recap
+            Group multi-session rides into one recap
           </span>
         </div>
         <div className="flex items-center gap-2">

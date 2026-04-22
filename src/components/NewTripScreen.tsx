@@ -54,7 +54,7 @@ export default function NewTripScreen() {
           Plan a <span className="text-gradient">tour</span>.
         </h1>
         <p className="text-sm text-neutral-400">
-          Group multi-day rides into one trip. Combined stats, one shareable
+          Group multi-session rides into one trip. Combined stats, one shareable
           recap, full route on the map.
         </p>
       </header>
@@ -73,7 +73,7 @@ export default function NewTripScreen() {
             {trimmedName || 'Your trip'}
           </div>
           <div className="truncate text-xs text-neutral-500">
-            {notes.trim() || 'Multi-day tour'}
+            {notes.trim() || 'Multi-session tour'}
           </div>
         </div>
       </section>
@@ -102,7 +102,7 @@ export default function NewTripScreen() {
             type="text"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="6-day loop · monsoon"
+            placeholder="6-session loop · monsoon"
             maxLength={140}
             className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3.5 text-base font-medium text-white placeholder:text-neutral-600 transition focus:border-moto-orange/60 focus:bg-white/[0.05] focus:outline-none"
           />

@@ -36,7 +36,7 @@ const trip: Trip = {
   id: 'trip-1',
   name: 'Ladakh 2026',
   coverColor: 'aurora',
-  notes: '6-day loop',
+  notes: '6-session loop',
   createdAt: 0,
   syncedAt: null,
 }
@@ -105,7 +105,7 @@ describe('renderTripSharePng', () => {
     ).rejects.toThrow(/no rides with routes/i)
   })
 
-  it('produces a 1080×1920 PNG blob for a multi-day trip', async () => {
+  it('produces a 1080×1920 PNG blob for a multi-session trip', async () => {
     const createElementSpy = vi.spyOn(document, 'createElement')
     const rides = [
       makeRide('r1', 30, 1_700_000_000_000),

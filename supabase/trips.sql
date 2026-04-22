@@ -1,5 +1,5 @@
--- MotoTrack — multi-day trips.
--- A trip groups multiple rides together (e.g. a 5-day Ladakh tour).
+-- MotoTrack — multi-session trips.
+-- A trip groups multiple ride sessions together (e.g. a 5-session Ladakh tour).
 -- Run this ONCE in the Supabase SQL editor AFTER schema.sql.
 -- Safe to re-run — all statements are idempotent.
 

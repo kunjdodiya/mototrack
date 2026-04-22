@@ -31,7 +31,7 @@ function ride(
 describe('combineTripStats', () => {
   it('returns nulls and zeros for an empty trip', () => {
     const t = combineTripStats([])
-    expect(t.dayCount).toBe(0)
+    expect(t.sessionCount).toBe(0)
     expect(t.distanceMeters).toBe(0)
     expect(t.startedAt).toBeNull()
     expect(t.endedAt).toBeNull()
@@ -39,7 +39,7 @@ describe('combineTripStats', () => {
     expect(t.elevationGainMeters).toBeNull()
   })
 
-  it('sums distance, duration, moving, idle, elevation across days', () => {
+  it('sums distance, duration, moving, idle, elevation across sessions', () => {
     const rides = [
       ride(
         {
@@ -63,7 +63,7 @@ describe('combineTripStats', () => {
       ),
     ]
     const t = combineTripStats(rides)
-    expect(t.dayCount).toBe(2)
+    expect(t.sessionCount).toBe(2)
     expect(t.distanceMeters).toBe(35_000)
     expect(t.durationMs).toBe(10_800_000)
     expect(t.movingDurationMs).toBe(9_300_000)
@@ -71,7 +71,7 @@ describe('combineTripStats', () => {
     expect(t.elevationGainMeters).toBe(920)
   })
 
-  it('takes max of top speed + max lean across days', () => {
+  it('takes max of top speed + max lean across sessions', () => {
     const rides = [
       ride({
         distanceMeters: 1_000,
@@ -119,7 +119,7 @@ describe('combineTripStats', () => {
     expect(t.endedAt).toBe(1200)
   })
 
-  it('returns null elevation when every day is missing it', () => {
+  it('returns null elevation when every session is missing it', () => {
     const rides = [
       ride({ distanceMeters: 1, movingDurationMs: 1, elevationGainMeters: null }),
       ride({ distanceMeters: 1, movingDurationMs: 1, elevationGainMeters: null }),

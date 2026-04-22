@@ -118,7 +118,7 @@ export default function AddToTripSheet({
 
       {trips.length === 0 ? (
         <p className="mt-3 text-sm text-neutral-400">
-          No trips yet. Create one to group multi-day rides into a single recap.
+          No trips yet. Create one to group multi-session rides into a single recap.
         </p>
       ) : (
         <ul className="mt-3 flex flex-col gap-2">

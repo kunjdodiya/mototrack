@@ -1,7 +1,7 @@
 import type { Ride } from '../../types/ride'
 
 export type TripStats = {
-  dayCount: number
+  sessionCount: number
   distanceMeters: number
   durationMs: number
   movingDurationMs: number
@@ -27,7 +27,7 @@ export type TripStats = {
 export function combineTripStats(rides: Ride[]): TripStats {
   if (rides.length === 0) {
     return {
-      dayCount: 0,
+      sessionCount: 0,
       distanceMeters: 0,
       durationMs: 0,
       movingDurationMs: 0,
@@ -79,7 +79,7 @@ export function combineTripStats(rides: Ride[]): TripStats {
   const avgSpeed = movingSec > 0 ? distance / movingSec : null
 
   return {
-    dayCount: rides.length,
+    sessionCount: rides.length,
     distanceMeters: distance,
     durationMs: duration,
     movingDurationMs: moving,

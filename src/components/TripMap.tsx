@@ -18,9 +18,10 @@ type Props = {
 const DEFAULT_CENTRE: [number, number] = [20.7619, 73.377]
 const DEFAULT_ZOOM = 6
 
-// Per-day palette. Picked so consecutive days stay visually distinct on the
-// CARTO Dark Matter base; wraps around for trips with more than 8 days.
-const DAY_COLORS = [
+// Per-session palette. Picked so consecutive sessions stay visually distinct
+// on the CARTO Dark Matter base; wraps around for trips with more than 8
+// sessions.
+const SESSION_COLORS = [
   '#ff4d00',
   '#ff2d87',
   '#7c3aed',
@@ -37,7 +38,7 @@ export default function TripMap({ rides, className }: Props) {
       rides
         .map((r, i) => ({
           id: r.id,
-          color: DAY_COLORS[i % DAY_COLORS.length],
+          color: SESSION_COLORS[i % SESSION_COLORS.length],
           positions: r.track.map((p) => [p.lat, p.lng] as [number, number]),
           start: r.track[0] ?? null,
           end: r.track[r.track.length - 1] ?? null,
