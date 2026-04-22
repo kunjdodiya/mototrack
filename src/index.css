@@ -15,8 +15,20 @@ html, body {
   height: 100dvh;
 }
 
+/* Paint the gradient on <html> so it covers the full physical screen,
+ * including the status-bar and home-indicator safe-area regions that sit
+ * outside #root's 100dvh box on iOS Capacitor. Avoid background-attachment:
+ * fixed on body — iOS WebKit drops those backgrounds into solid black around
+ * safe-area regions when the page has infinite GPU animations (e.g. the Ride
+ * Now Start button's pulse-ring). <html> has no such quirk. */
 html {
-  background: #07070a;
+  background-color: #07070a;
+  background-image:
+    radial-gradient(65% 45% at 15% 0%, rgba(255, 77, 0, 0.18) 0%, transparent 70%),
+    radial-gradient(60% 40% at 85% 10%, rgba(124, 58, 237, 0.18) 0%, transparent 70%),
+    radial-gradient(60% 40% at 15% 100%, rgba(255, 77, 0, 0.18) 0%, transparent 70%),
+    radial-gradient(60% 40% at 85% 100%, rgba(124, 58, 237, 0.18) 0%, transparent 70%),
+    radial-gradient(80% 55% at 50% 100%, rgba(255, 45, 135, 0.2) 0%, transparent 70%);
 }
 
 body {
@@ -28,25 +40,12 @@ body {
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: contain;
-  background-color: #07070a;
+  background-color: transparent;
 }
 
-/* Paint the gradient on #root (not body with background-attachment: fixed).
- * iOS WebKit drops fixed backgrounds into solid black around safe-area regions
- * when the page has infinite GPU animations (e.g. the Ride Now Start button's
- * pulse-ring). #root has an explicit 100dvh height and extends under the
- * status-bar and home-indicator via safe-area padding, so the gradient
- * reliably fills every edge of the screen on every route. */
 #root {
   padding-top: env(safe-area-inset-top);
-  background-color: #07070a;
-  background-image:
-    radial-gradient(65% 45% at 15% 0%, rgba(255, 77, 0, 0.18) 0%, transparent 70%),
-    radial-gradient(60% 40% at 85% 10%, rgba(124, 58, 237, 0.18) 0%, transparent 70%),
-    radial-gradient(60% 40% at 15% 100%, rgba(255, 77, 0, 0.18) 0%, transparent 70%),
-    radial-gradient(60% 40% at 85% 100%, rgba(124, 58, 237, 0.18) 0%, transparent 70%),
-    radial-gradient(80% 55% at 50% 100%, rgba(255, 45, 135, 0.2) 0%, transparent 70%);
-  background-origin: border-box;
+  background-color: transparent;
 }
 
 button, a {
