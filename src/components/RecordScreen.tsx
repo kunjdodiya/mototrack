@@ -16,6 +16,7 @@ import { pushBike } from '../features/storage/sync'
 import LiveStats from './LiveStats'
 import RideMap from './RideMap'
 import LocationBlockedCard from './LocationBlockedCard'
+import ForgotToStopSheet from './ForgotToStopSheet'
 
 const isNative = Capacitor.isNativePlatform()
 
@@ -24,12 +25,18 @@ export default function RecordScreen() {
   const status = useRecorder((s) => s.status)
   const error = useRecorder((s) => s.error)
   const points = useRecorder((s) => s.points)
+  const startedAt = useRecorder((s) => s.startedAt)
+  const liveDistanceMeters = useRecorder((s) => s.liveDistanceMeters)
+  const liveDurationMs = useRecorder((s) => s.liveDurationMs)
   const pointCount = points.length
   const start = useRecorder((s) => s.start)
   const pause = useRecorder((s) => s.pause)
   const resume = useRecorder((s) => s.resume)
   const stop = useRecorder((s) => s.stop)
+  const stopAt = useRecorder((s) => s.stopAt)
   const reset = useRecorder((s) => s.reset)
+
+  const [showTrimSheet, setShowTrimSheet] = useState(false)
 
   const bikes = useLiveQuery(() => db.bikes.orderBy('createdAt').toArray(), [], [])
   const rideCount = useLiveQuery(() => db.rides.count(), [], 0)
@@ -86,6 +93,18 @@ export default function RecordScreen() {
     playStopChime()
     platform.hapticTap('medium')
     const ride = await stop()
+    if (ride) {
+      setRideName('')
+      setSelectedBikeId('')
+      navigate(`/ride/${ride.id}`)
+    }
+  }
+
+  const handleTrimStop = async (endedAt: number) => {
+    playStopChime()
+    platform.hapticTap('medium')
+    const ride = await stopAt(endedAt)
+    setShowTrimSheet(false)
     if (ride) {
       setRideName('')
       setSelectedBikeId('')
@@ -355,10 +374,30 @@ export default function RecordScreen() {
             </button>
           </div>
 
+          <button
+            type="button"
+            onClick={() => setShowTrimSheet(true)}
+            disabled={saving || startedAt == null}
+            className="mx-auto text-xs font-semibold text-neutral-400 underline decoration-dotted underline-offset-4 transition hover:text-white disabled:opacity-40"
+          >
+            Forgot to stop? Trim ride →
+          </button>
+
           {error && (
             <p className="text-center text-sm text-red-400">
               GPS error: {error.message}
             </p>
+          )}
+
+          {showTrimSheet && startedAt != null && (
+            <ForgotToStopSheet
+              startedAt={startedAt}
+              points={points}
+              liveDistanceMeters={liveDistanceMeters}
+              liveDurationMs={liveDurationMs}
+              onConfirm={handleTrimStop}
+              onClose={() => setShowTrimSheet(false)}
+            />
           )}
         </div>
       )}

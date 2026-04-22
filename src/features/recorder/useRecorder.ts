@@ -31,6 +31,7 @@ type RecorderState = {
   pause: () => void
   resume: () => void
   stop: () => Promise<Ride | null>
+  stopAt: (endedAt: number) => Promise<Ride | null>
   reset: () => void
 }
 
@@ -148,6 +149,38 @@ export const useRecorder = create<RecorderState>((set, get) => ({
 
     // Leave the recorder in 'idle' with the final counts visible briefly;
     // consumers navigate away to /ride/:id.
+    set({ status: 'idle' })
+    return ride
+  },
+
+  stopAt: async (endedAt: number) => {
+    const { status, points, startedAt, name, bikeId } = get()
+    if (status === 'idle' || startedAt == null) return null
+
+    // Clamp: never before start, never after now.
+    const now = Date.now()
+    const clamped = Math.min(now, Math.max(startedAt, endedAt))
+
+    set({ status: 'saving' })
+    tearDown()
+
+    const trimmed = points.filter((p) => p.ts <= clamped)
+    const stats = computeStats(trimmed, startedAt, clamped)
+    const ride: Ride = {
+      id: uuidv4(),
+      deviceId: getDeviceId(),
+      startedAt,
+      endedAt: clamped,
+      track: trimmed,
+      stats,
+      syncedAt: null,
+      ...(name ? { name } : {}),
+      ...(bikeId ? { bikeId } : {}),
+    }
+
+    await saveRide(ride)
+    void pushRide(ride)
+
     set({ status: 'idle' })
     return ride
   },
