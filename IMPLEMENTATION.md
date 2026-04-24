@@ -206,8 +206,8 @@ The living map of what exists in this repo and where. **Update this file every t
 
 - `ios/` — Xcode project (Capacitor)
 - `android/` — Android Studio project (Capacitor)
-- `ios/App/App/Info.plist` — privacy strings for location, `UIBackgroundModes=[location]`, `CFBundleURLTypes` for the `com.kunjdodiya.mototrack://` OAuth deep link
-- `android/app/src/main/AndroidManifest.xml` — location + foreground-service-location + POST_NOTIFICATIONS + VIBRATE permissions, plus the deep-link intent-filter on MainActivity
+- `ios/App/App/Info.plist` — privacy strings for location, `UIBackgroundModes=[location]`, `CFBundleURLTypes` for the `com.kunjdodiya.mototrack://` OAuth deep link, portrait-only `UISupportedInterfaceOrientations` (iPhone + iPad)
+- `android/app/src/main/AndroidManifest.xml` — location + foreground-service-location + POST_NOTIFICATIONS + VIBRATE permissions, plus the deep-link intent-filter on MainActivity (locked portrait via `android:screenOrientation`)
 - `assets/` — generated 1024×1024 source PNGs that feed `@capacitor/assets`; produced by `scripts/generate-native-assets.mjs`. Output is committed under `ios/App/App/Assets.xcassets/` and `android/app/src/main/res/`
 - `capacitor.config.ts` — `android.useLegacyBridge: true` is required by the background-geolocation plugin to keep updates flowing past the 5-minute mark
 

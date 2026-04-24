@@ -259,3 +259,15 @@ Realtime (Supabase `postgres_changes` subscriptions) was considered and delibera
 - Client-side: `src/features/admin/stats.ts` wraps the two RPCs, `src/types/admin.ts` types the payload, `src/components/AdminScreen.tsx` renders the dashboard at `/admin` (inside `AuthGate`, not on the bottom tab bar), and `ProfileScreen` shows a conditional "Owner console → Open dashboard" card only when `am_i_admin()` returns true. Non-admin visitors to `/admin` get a friendly "Not authorized" screen instead of a silent 403.
 
 **Consequences:** The owner visits `/admin` signed in with their Google account and sees every aggregate in one scroll. Adding another admin is one `insert into public.admins` away — no code change, no redeploy. Because the dashboard is a single RPC it's one round-trip, cache-friendly, and trivially replaceable by an Edge Function later if the query ever outgrows a synchronous PLpgSQL execution. The security-definer pattern is now established for future cross-user reads (moderation tools, admin ride deletes) that want to honor the "never bypass RLS from the client" rule without duplicating queries into an edge function. The dashboard is read-only — destructive admin actions (delete a user's rides, ban a club) are deliberately out of scope; adding them would need a second allowlist check on the mutation side and belongs in its own decision when the need is real. The `admin_dashboard()` function reads `auth.users.raw_user_meta_data` to show display names; that's fine because the function runs as the postgres owner, but it does mean renaming the metadata keys (`full_name`) in a future Supabase update would quietly break the "name" column in the dashboard — documented at the function site.
+
+## 2026-04-24 — Portrait-only on all platforms
+
+**Context:** The app is a one-handed, glanceable motorcycle tracker. Every screen (Ride Now idle, swipe-to-start, live recorder, history, stats) was designed and laid out for a narrow vertical viewport — the map flexes to fit, the bottom tab bar sits at the home-indicator edge, and the swipe gesture is calibrated for a tall button. Landscape was never tuned and produces a broken-looking UI (map squashed, controls falling off, tab bar floating mid-screen).
+
+**Decision:** Lock portrait across all three shells.
+
+- iOS: `UISupportedInterfaceOrientations` and `UISupportedInterfaceOrientations~ipad` in `ios/App/App/Info.plist` now list only `UIInterfaceOrientationPortrait`.
+- Android: `android:screenOrientation="portrait"` on `MainActivity` in `android/app/src/main/AndroidManifest.xml`.
+- Web PWA: `public/manifest.webmanifest` already had `"orientation": "portrait"` — kept as-is.
+
+**Consequences:** Rotating the device does nothing — the UI stays upright. This removes a whole class of layout bugs from the backlog and means future agents don't need to test or design a landscape state. If a landscape feature is ever wanted (e.g. a wide-screen analytics view on iPad), it becomes a deliberate new decision rather than an accidental fallback.
