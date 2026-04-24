@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom'
 
-export type ShareFormat = 'poster' | 'overlay'
+export type ShareFormat = 'poster' | 'glass' | 'overlay'
 
 type Props = {
   onPick: (format: ShareFormat) => void
@@ -12,8 +12,12 @@ type Props = {
  * tap Share:
  *
  * - **poster** — the full 1080×1920 brand poster (dark map + stats grid).
- * - **overlay** — transparent 1080×1920 route + graph + distance/time only,
- *   designed to be composited on top of a photo the rider took on the ride.
+ * - **glass** — full 1080×1920 poster with every data module painted as a
+ *   frosted-glass panel on a fully transparent canvas, so the rider can drop
+ *   their own photo in the background.
+ * - **overlay** — transparent 1080×1920 route + moving time / distance /
+ *   avg speed only, designed to be composited on top of a photo the rider
+ *   took on the ride.
  *
  * Rendered through a portal into `document.body` so the sheet escapes the
  * page-transition `transform` on <main>, which would otherwise turn <main>
@@ -64,6 +68,24 @@ export default function ShareFormatPicker({ onPick, onClose }: Props) {
 
         <button
           type="button"
+          onClick={() => onPick('glass')}
+          className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition hover:border-white/20 hover:bg-white/[0.06] active:scale-[0.99]"
+        >
+          <GlassThumb />
+          <div className="min-w-0 flex-1">
+            <div className="font-display text-base font-bold tracking-tight">
+              Glass poster
+            </div>
+            <div className="mt-0.5 text-xs text-neutral-400">
+              Same full poster with all the stats, but every panel is frosted
+              glass on a transparent PNG — drop your photo behind it.
+            </div>
+          </div>
+          <Chevron />
+        </button>
+
+        <button
+          type="button"
           onClick={() => onPick('overlay')}
           className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition hover:border-white/20 hover:bg-white/[0.06] active:scale-[0.99]"
         >
@@ -73,8 +95,8 @@ export default function ShareFormatPicker({ onPick, onClose }: Props) {
               Transparent overlay
             </div>
             <div className="mt-0.5 text-xs text-neutral-400">
-              Just the route, graph, distance, and time on a transparent PNG —
-              drop it over your own photo.
+              Just the route with moving time, distance, and avg speed on a
+              transparent PNG — drop it over your own photo.
             </div>
           </div>
           <Chevron />
@@ -101,6 +123,39 @@ function PosterThumb() {
     >
       <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-br from-moto-orange via-moto-magenta to-moto-violet opacity-80" />
       <div className="absolute inset-x-1 bottom-1 h-4 rounded-sm bg-white/10" />
+    </div>
+  )
+}
+
+function GlassThumb() {
+  return (
+    <div
+      aria-hidden
+      className="relative flex h-14 w-10 shrink-0 overflow-hidden rounded-lg border border-white/20"
+      style={{
+        backgroundImage:
+          'linear-gradient(45deg, rgba(255,255,255,0.08) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.08) 75%), linear-gradient(45deg, rgba(255,255,255,0.08) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.08) 75%)',
+        backgroundSize: '8px 8px',
+        backgroundPosition: '0 0, 4px 4px',
+      }}
+    >
+      <svg
+        viewBox="0 0 40 56"
+        className="absolute inset-0 h-full w-full"
+        aria-hidden
+      >
+        <path
+          d="M6 20 C 12 10, 22 14, 18 6 S 30 2, 34 4"
+          stroke="#ff4d00"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+        <rect x="5" y="26" width="30" height="8" rx="2" fill="rgba(255,255,255,0.28)" stroke="rgba(255,255,255,0.55)" strokeWidth="0.5" />
+        <rect x="5" y="36" width="30" height="8" rx="2" fill="rgba(255,255,255,0.28)" stroke="rgba(255,255,255,0.55)" strokeWidth="0.5" />
+        <rect x="5" y="46" width="30" height="6" rx="1.5" fill="rgba(255,255,255,0.28)" stroke="rgba(255,255,255,0.55)" strokeWidth="0.5" />
+      </svg>
     </div>
   )
 }

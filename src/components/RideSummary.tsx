@@ -5,6 +5,7 @@ import { getRide, deleteRide, trimRide } from '../features/storage/rides'
 import { pushRide } from '../features/storage/sync'
 import { renderSharePng } from '../features/share/exportPng'
 import { renderOverlayPng } from '../features/share/exportOverlayPng'
+import { renderGlassPng } from '../features/share/exportGlassPng'
 import { platform } from '../features/platform'
 import { formatDateTime } from '../features/stats/format'
 import RideMap from './RideMap'
@@ -85,8 +86,15 @@ export default function RideSummary() {
       const blob =
         format === 'overlay'
           ? await renderOverlayPng({ ride })
-          : await renderSharePng({ ride })
-      const suffix = format === 'overlay' ? 'overlay' : 'story'
+          : format === 'glass'
+            ? await renderGlassPng({ ride })
+            : await renderSharePng({ ride })
+      const suffix =
+        format === 'overlay'
+          ? 'overlay'
+          : format === 'glass'
+            ? 'glass'
+            : 'story'
       await platform.sharePng({
         blob,
         filename: `mototrack-${suffix}-${ride.id.slice(0, 8)}.png`,
@@ -168,8 +176,8 @@ export default function RideSummary() {
       </button>
 
       <p className="-mt-2 text-center text-xs text-neutral-500">
-        Pick a branded Story poster or a transparent overlay you can drop on
-        top of your own photo.
+        Pick a branded Story poster, a frosted-glass poster you can drop your
+        photo behind, or a transparent overlay for on top of your photo.
       </p>
 
       {exportError && (
