@@ -1,7 +1,13 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Routes, Route, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import BottomTabBar from './BottomTabBar'
+import { platform } from '../features/platform'
+
+vi.mock('../features/platform', () => ({
+  platform: { hapticTap: vi.fn() },
+}))
 
 describe('BottomTabBar', () => {
   it('renders all four primary tab labels', () => {
@@ -50,5 +56,38 @@ describe('BottomTabBar', () => {
     )
     const community = screen.getByRole('link', { name: /community/i })
     expect(community).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('does not fire a haptic on initial mount', () => {
+    vi.mocked(platform.hapticTap).mockClear()
+    render(
+      <MemoryRouter initialEntries={['/history']}>
+        <BottomTabBar />
+      </MemoryRouter>,
+    )
+    expect(platform.hapticTap).not.toHaveBeenCalled()
+  })
+
+  it('fires a haptic when the active tab changes', () => {
+    vi.mocked(platform.hapticTap).mockClear()
+
+    function Jumper() {
+      const navigate = useNavigate()
+      useEffect(() => {
+        navigate('/community')
+      }, [navigate])
+      return null
+    }
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route path="*" element={<BottomTabBar />} />
+        </Routes>
+        <Jumper />
+      </MemoryRouter>,
+    )
+
+    expect(platform.hapticTap).toHaveBeenCalledWith('light')
   })
 })

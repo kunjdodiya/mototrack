@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
+import { platform } from '../features/platform'
 
 type Tab = {
   to: string
@@ -23,6 +24,13 @@ function matchesTab(pathname: string, tab: Tab): boolean {
 export default function BottomTabBar() {
   const { pathname } = useLocation()
   const activeIndex = tabs.findIndex((t) => matchesTab(pathname, t))
+  const prevIndexRef = useRef(activeIndex)
+  useEffect(() => {
+    if (prevIndexRef.current !== activeIndex && activeIndex >= 0) {
+      platform.hapticTap('light')
+    }
+    prevIndexRef.current = activeIndex
+  }, [activeIndex])
   const cellPercent = 100 / tabs.length
   const pillLeft = `calc(${Math.max(activeIndex, 0) * cellPercent}% + 0.25rem)`
   const pillWidth = `calc(${cellPercent}% - 0.5rem)`
