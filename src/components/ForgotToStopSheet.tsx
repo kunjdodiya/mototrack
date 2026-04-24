@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { TrackPoint } from '../types/ride'
 import { haversine } from '../features/stats/haversine'
 import {
@@ -106,7 +107,8 @@ export default function ForgotToStopSheet({
     }
   }
 
-  return (
+  if (typeof document === 'undefined') return null
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -233,7 +235,8 @@ export default function ForgotToStopSheet({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

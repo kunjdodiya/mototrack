@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom'
+
 export type ShareFormat = 'poster' | 'overlay'
 
 type Props = {
@@ -12,9 +14,15 @@ type Props = {
  * - **poster** — the full 1080×1920 brand poster (dark map + stats grid).
  * - **overlay** — transparent 1080×1920 route + graph + distance/time only,
  *   designed to be composited on top of a photo the rider took on the ride.
+ *
+ * Rendered through a portal into `document.body` so the sheet escapes the
+ * page-transition `transform` on <main>, which would otherwise turn <main>
+ * into the containing block for `position: fixed` and pin the sheet to the
+ * top of the scrolled page instead of the viewport's bottom edge.
  */
 export default function ShareFormatPicker({ onPick, onClose }: Props) {
-  return (
+  if (typeof document === 'undefined') return null
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -80,7 +88,8 @@ export default function ShareFormatPicker({ onPick, onClose }: Props) {
           Cancel
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
