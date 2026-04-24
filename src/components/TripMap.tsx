@@ -87,8 +87,7 @@ export default function TripMap({ rides, className }: Props) {
                 center={[l.start.lat, l.start.lng] as [number, number]}
                 radius={6}
                 pathOptions={{
-                  color: '#fff',
-                  weight: 2,
+                  stroke: false,
                   fillColor: l.color,
                   fillOpacity: 1,
                 }}
@@ -105,8 +104,7 @@ export default function TripMap({ rides, className }: Props) {
                   center={[endPoint.lat, endPoint.lng] as [number, number]}
                   radius={8}
                   pathOptions={{
-                    color: '#fff',
-                    weight: 2,
+                    stroke: false,
                     fillColor: '#ef4444',
                     fillOpacity: 1,
                   }}

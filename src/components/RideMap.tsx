@@ -67,8 +67,7 @@ export default function RideMap({
             center={[last.lat, last.lng]}
             radius={7}
             pathOptions={{
-              color: '#fff',
-              weight: 2,
+              stroke: false,
               fillColor: '#ff4d00',
               fillOpacity: 1,
             }}

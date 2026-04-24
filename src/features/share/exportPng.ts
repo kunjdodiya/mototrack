@@ -174,8 +174,6 @@ async function drawMapHero(ctx: CanvasRenderingContext2D, ride: Ride) {
   mctx.fillRect(0, 0, mapWPx, mapHPx)
   mctx.globalCompositeOperation = 'source-over'
 
-  // Route: white halo under a bright orange core for legibility on any tile.
-  // Stroke widths scale with PIXEL_RATIO so they stay at ~14 / 8 logical px.
   mctx.lineCap = 'round'
   mctx.lineJoin = 'round'
   mctx.beginPath()
@@ -187,9 +185,6 @@ async function drawMapHero(ctx: CanvasRenderingContext2D, ride: Ride) {
     if (i === 0) mctx.moveTo(x, y)
     else mctx.lineTo(x, y)
   }
-  mctx.strokeStyle = 'rgba(255,255,255,0.9)'
-  mctx.lineWidth = 14 * PIXEL_RATIO
-  mctx.stroke()
   mctx.strokeStyle = '#ff4d00'
   mctx.lineWidth = 8 * PIXEL_RATIO
   mctx.stroke()
@@ -634,10 +629,6 @@ function drawDot(
   const wp = lngLatToWorldPx(p.lng, p.lat, z)
   const x = wp.x - anchorX
   const y = wp.y - anchorY
-  ctx.beginPath()
-  ctx.arc(x, y, 14 * scale, 0, Math.PI * 2)
-  ctx.fillStyle = '#fff'
-  ctx.fill()
   ctx.beginPath()
   ctx.arc(x, y, 10 * scale, 0, Math.PI * 2)
   ctx.fillStyle = color

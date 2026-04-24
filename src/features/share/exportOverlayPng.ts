@@ -81,8 +81,6 @@ function drawRoute(ctx: CanvasRenderingContext2D, track: TrackPoint[]) {
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
 
-  // White halo first so the orange core reads on any photo below — including
-  // bright skies and snow-covered mountains.
   ctx.beginPath()
   for (let i = 0; i < track.length; i++) {
     const wp = lngLatToWorldPx(track[i].lng, track[i].lat, zoom)
@@ -91,9 +89,6 @@ function drawRoute(ctx: CanvasRenderingContext2D, track: TrackPoint[]) {
     if (i === 0) ctx.moveTo(x, y)
     else ctx.lineTo(x, y)
   }
-  ctx.strokeStyle = 'rgba(255,255,255,0.92)'
-  ctx.lineWidth = 22
-  ctx.stroke()
   ctx.strokeStyle = '#ff4d00'
   ctx.lineWidth = 12
   ctx.stroke()
@@ -143,7 +138,6 @@ function drawSpeedGraph(ctx: CanvasRenderingContext2D, track: TrackPoint[]) {
   ctx.fillStyle = 'rgba(255,77,0,0.22)'
   ctx.fill()
 
-  // White halo under the line so it reads on dark + bright photo subjects.
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
   ctx.beginPath()
@@ -152,9 +146,6 @@ function drawSpeedGraph(ctx: CanvasRenderingContext2D, track: TrackPoint[]) {
     if (i === 0) ctx.moveTo(p.x, p.y)
     else ctx.lineTo(p.x, p.y)
   }
-  ctx.strokeStyle = 'rgba(255,255,255,0.9)'
-  ctx.lineWidth = 10
-  ctx.stroke()
   ctx.strokeStyle = '#ff4d00'
   ctx.lineWidth = 5
   ctx.stroke()
@@ -234,10 +225,6 @@ function drawDot(
   const wp = lngLatToWorldPx(p.lng, p.lat, z)
   const x = wp.x - anchorX
   const y = wp.y - anchorY
-  ctx.beginPath()
-  ctx.arc(x, y, 18, 0, Math.PI * 2)
-  ctx.fillStyle = '#fff'
-  ctx.fill()
   ctx.beginPath()
   ctx.arc(x, y, 13, 0, Math.PI * 2)
   ctx.fillStyle = color

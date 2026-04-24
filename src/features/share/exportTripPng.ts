@@ -133,8 +133,6 @@ async function drawTripMapHero(
   mctx.lineCap = 'round'
   mctx.lineJoin = 'round'
 
-  // Paint every session's route with a white halo + per-session colored core
-  // so the multi-session geometry reads cleanly on the dark map.
   rides.forEach((r, i) => {
     const color = SESSION_COLORS[i % SESSION_COLORS.length]
     mctx.beginPath()
@@ -146,9 +144,6 @@ async function drawTripMapHero(
       if (j === 0) mctx.moveTo(x, y)
       else mctx.lineTo(x, y)
     }
-    mctx.strokeStyle = 'rgba(255,255,255,0.9)'
-    mctx.lineWidth = 14
-    mctx.stroke()
     mctx.strokeStyle = color
     mctx.lineWidth = 8
     mctx.stroke()
@@ -450,10 +445,6 @@ function drawDot(
   const wp = lngLatToWorldPx(p.lng, p.lat, z)
   const x = wp.x - anchorX
   const y = wp.y - anchorY
-  ctx.beginPath()
-  ctx.arc(x, y, 14, 0, Math.PI * 2)
-  ctx.fillStyle = '#fff'
-  ctx.fill()
   ctx.beginPath()
   ctx.arc(x, y, 10, 0, Math.PI * 2)
   ctx.fillStyle = color
