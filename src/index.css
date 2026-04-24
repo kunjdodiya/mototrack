@@ -73,11 +73,16 @@ button, a {
     border: 1px solid rgba(255, 255, 255, 0.06);
   }
 
+  /* Translucent frosted chrome for floating panels (bottom tab bar, install
+   * hint). Low alpha + heavy blur + saturation boost so the mesh-gradient
+   * beneath smears into a uniform frosted tone instead of reading as a
+   * colorful stripe — mimics iOS "liquid glass" rather than a solid bar.
+   * Call sites layer their own outer drop shadow via `shadow-[...]`. */
   .glass-strong {
-    background: rgba(14, 14, 18, 0.82);
-    backdrop-filter: saturate(160%) blur(28px);
-    -webkit-backdrop-filter: saturate(160%) blur(28px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(18, 18, 22, 0.55);
+    backdrop-filter: saturate(200%) blur(40px);
+    -webkit-backdrop-filter: saturate(200%) blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .safe-top {
@@ -108,6 +113,12 @@ button, a {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+/* Lift the CARTO Dark Matter tiles out of near-black into a softer gray so
+ * roads, labels, and the orange route read more easily on mobile. */
+.leaflet-tile-pane {
+  filter: brightness(1.55) contrast(0.82);
 }
 
 @media (prefers-reduced-motion: reduce) {

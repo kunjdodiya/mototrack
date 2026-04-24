@@ -20,7 +20,16 @@ const config: CapacitorConfig = {
   ios: {
     // Background location must also be declared in Info.plist under
     // UIBackgroundModes: [location] — Capacitor won't add it automatically.
-    contentInset: 'always',
+    // contentInset stays 'never' (the default) so the WKWebView content
+    // extends under the status bar AND the home indicator. The html-level
+    // gradient in index.css fills those regions; safe-area insets are
+    // applied in CSS (env(safe-area-inset-*)) to keep content below the
+    // notch and above the tab bar.
+    contentInset: 'never',
+    // iOS >=13: make the WebView background match our dark mesh so the
+    // half-frame that sits under the status bar / home indicator before
+    // the first paint doesn't flash white.
+    backgroundColor: '#07070a',
   },
   android: {
     // Required by @capacitor-community/background-geolocation: without the
