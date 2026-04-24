@@ -30,12 +30,17 @@ function rowToClub(r: RemoteClubRow): Club {
 const CLUB_COLUMNS =
   'id, name, description, city, accent, created_by, member_count, created_at'
 
-export async function listClubs(): Promise<Club[]> {
-  const { data, error } = await supabase
+export async function listClubs(options?: {
+  cityLike?: string | null
+}): Promise<Club[]> {
+  let q = supabase
     .from('clubs')
     .select(CLUB_COLUMNS)
     .order('member_count', { ascending: false })
     .order('created_at', { ascending: false })
+  const needle = options?.cityLike?.trim()
+  if (needle) q = q.ilike('city', `%${needle}%`)
+  const { data, error } = await q
   if (error) throw error
   return ((data ?? []) as RemoteClubRow[]).map(rowToClub)
 }

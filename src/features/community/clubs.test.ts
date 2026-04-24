@@ -19,6 +19,7 @@ type Chain = {
   select?: string
   eqs: Array<[string, unknown]>
   ins: Array<[string, unknown[]]>
+  ilikes: Array<[string, string]>
   order?: string
   limit?: number
   maybeSingle?: boolean
@@ -30,7 +31,7 @@ vi.mock('../auth/session', () => ({
 }))
 
 function buildChain(table: string) {
-  const chain: Chain = { eqs: [], ins: [] }
+  const chain: Chain = { eqs: [], ins: [], ilikes: [] }
   const result = {
     select(cols: string) {
       chain.select = cols
@@ -42,6 +43,10 @@ function buildChain(table: string) {
     },
     in(col: string, vals: unknown[]) {
       chain.ins.push([col, vals])
+      return result
+    },
+    ilike(col: string, pattern: string) {
+      chain.ilikes.push([col, pattern])
       return result
     },
     gte(col: string, val: string) {
@@ -80,6 +85,13 @@ function resolveSelect(table: string, chain: Chain) {
     for (const [col, val] of chain.eqs) rows = rows.filter((r) => r[col] === val)
     for (const [col, vals] of chain.ins)
       rows = rows.filter((r) => (vals as unknown[]).includes(r[col]))
+    for (const [col, pattern] of chain.ilikes) {
+      const needle = pattern.replace(/^%|%$/g, '').toLowerCase()
+      rows = rows.filter((r) => {
+        const v = r[col]
+        return typeof v === 'string' && v.toLowerCase().includes(needle)
+      })
+    }
     if (chain.maybeSingle) return { data: rows[0] ?? null, error: null }
     return { data: rows, error: null }
   }
@@ -183,6 +195,33 @@ describe('clubs data layer', () => {
       memberCount: 42,
     })
     expect(typeof out[0].createdAt).toBe('number')
+  })
+
+  it('filters listClubs by city when cityLike is provided (case-insensitive substring)', async () => {
+    selectRows.clubs = [
+      {
+        id: 'c1',
+        name: 'Bay Twisties',
+        description: null,
+        city: 'San Francisco, CA',
+        accent: 'sunrise',
+        created_by: 'u1',
+        member_count: 7,
+        created_at: '2026-04-20T10:00:00Z',
+      },
+      {
+        id: 'c2',
+        name: 'NYC Night Riders',
+        description: null,
+        city: 'New York, NY',
+        accent: 'neon',
+        created_by: 'u2',
+        member_count: 3,
+        created_at: '2026-04-19T10:00:00Z',
+      },
+    ]
+    const out = await listClubs({ cityLike: 'san franc' })
+    expect(out.map((c) => c.id)).toEqual(['c1'])
   })
 
   it('returns [] from listMyClubs when user has no memberships', async () => {

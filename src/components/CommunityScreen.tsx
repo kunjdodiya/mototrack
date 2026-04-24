@@ -4,29 +4,36 @@ import type { Club, ClubEvent } from '../types/club'
 import { listClubs, listMyClubs } from '../features/community/clubs'
 import { listUpcomingEventsForMyClubs } from '../features/community/events'
 import { ACCENT_GRADIENT_CLASS, clubInitials } from '../features/community/accents'
+import { getUserId } from '../features/auth/session'
+import LocationPicker from './LocationPicker'
+import { readStoredLocation } from '../features/community/location'
 
-type Tab = 'clubs' | 'host'
+type Tab = 'clubs' | 'manager'
 
 export default function CommunityScreen() {
-  const [tab, setTab] = useState<Tab>('host')
-  const [allClubs, setAllClubs] = useState<Club[] | null>(null)
+  const [tab, setTab] = useState<Tab>('clubs')
+  const [location, setLocation] = useState<string | null>(() =>
+    readStoredLocation(),
+  )
+  const [discoverClubs, setDiscoverClubs] = useState<Club[] | null>(null)
   const [myClubs, setMyClubs] = useState<Club[] | null>(null)
   const [upcoming, setUpcoming] = useState<ClubEvent[] | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     async function load() {
       try {
-        const [all, mine, events] = await Promise.all([
-          listClubs(),
+        const [mine, events, uid] = await Promise.all([
           listMyClubs(),
           listUpcomingEventsForMyClubs(),
+          getUserId(),
         ])
         if (cancelled) return
-        setAllClubs(all)
         setMyClubs(mine)
         setUpcoming(events)
+        setUserId(uid)
       } catch (err: unknown) {
         if (!cancelled)
           setError(err instanceof Error ? err.message : 'Could not load community.')
@@ -38,9 +45,27 @@ export default function CommunityScreen() {
     }
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const all = await listClubs({ cityLike: location })
+        if (!cancelled) setDiscoverClubs(all)
+      } catch (err: unknown) {
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : 'Could not load clubs.')
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [location])
+
   const myClubIds = new Set((myClubs ?? []).map((c) => c.id))
-  const discover = (allClubs ?? []).filter((c) => !myClubIds.has(c.id))
-  const hasAnyClub = (myClubs ?? []).length > 0
+  const discover = (discoverClubs ?? []).filter((c) => !myClubIds.has(c.id))
+  const managedClubs = (myClubs ?? []).filter((c) => c.createdBy === userId)
+  const hostedUpcoming = (upcoming ?? []).filter((e) => e.createdBy === userId)
 
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-6 px-5 pb-10 pt-8">
@@ -52,8 +77,8 @@ export default function CommunityScreen() {
           Find your <span className="text-gradient">crew</span>.
         </h1>
         <p className="text-sm text-neutral-400">
-          Join motorcycle clubs near you or host your own rides and moto
-          events.
+          Join motorcycle clubs near you, or manage a club and host rides for
+          its members.
         </p>
       </header>
 
@@ -66,21 +91,9 @@ export default function CommunityScreen() {
           aria-hidden
           className={[
             'absolute inset-y-1 w-1/2 rounded-xl bg-brand-gradient shadow-tab-active transition-all duration-500 ease-out',
-            tab === 'host' ? 'left-1' : 'left-[calc(50%-0.25rem)]',
+            tab === 'clubs' ? 'left-1' : 'left-[calc(50%-0.25rem)]',
           ].join(' ')}
         />
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'host'}
-          onClick={() => setTab('host')}
-          className={[
-            'relative z-10 rounded-xl py-2.5 text-sm font-semibold tracking-tight transition-colors duration-300',
-            tab === 'host' ? 'text-white' : 'text-neutral-400',
-          ].join(' ')}
-        >
-          Host
-        </button>
         <button
           type="button"
           role="tab"
@@ -92,6 +105,18 @@ export default function CommunityScreen() {
           ].join(' ')}
         >
           Clubs
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'manager'}
+          onClick={() => setTab('manager')}
+          className={[
+            'relative z-10 rounded-xl py-2.5 text-sm font-semibold tracking-tight transition-colors duration-300',
+            tab === 'manager' ? 'text-white' : 'text-neutral-400',
+          ].join(' ')}
+        >
+          Club Manager
         </button>
       </div>
 
@@ -105,13 +130,15 @@ export default function CommunityScreen() {
         <ClubsPanel
           myClubs={myClubs}
           discover={discover}
-          loaded={allClubs !== null && myClubs !== null}
+          location={location}
+          onLocationChange={setLocation}
+          loaded={discoverClubs !== null && myClubs !== null}
         />
       ) : (
-        <HostPanel
-          myClubs={myClubs ?? []}
-          upcoming={upcoming}
-          hasAnyClub={hasAnyClub}
+        <ManagerPanel
+          managedClubs={managedClubs}
+          hostedUpcoming={hostedUpcoming}
+          loaded={myClubs !== null && upcoming !== null}
         />
       )}
     </div>
@@ -121,74 +148,72 @@ export default function CommunityScreen() {
 function ClubsPanel({
   myClubs,
   discover,
+  location,
+  onLocationChange,
   loaded,
 }: {
   myClubs: Club[] | null
   discover: Club[]
+  location: string | null
+  onLocationChange: (next: string | null) => void
   loaded: boolean
 }) {
+  const discoverTitle = location ? `Near ${location}` : 'Discover'
   return (
     <div className="flex animate-fade-up flex-col gap-5">
-      <div className="flex items-center justify-between gap-3">
+      <LocationPicker value={location} onChange={onLocationChange} />
+
+      {myClubs && myClubs.length > 0 && (
+        <section>
+          <SectionHeading
+            title="My clubs"
+            hint={`${myClubs.length} joined`}
+          />
+          <ul className="mt-3 flex flex-col gap-3">
+            {myClubs.map((c, i) => (
+              <ClubRow key={c.id} club={c} joined index={i} />
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section>
         <SectionHeading
-          title={myClubs && myClubs.length > 0 ? 'My clubs' : 'Clubs'}
+          title={discoverTitle}
           hint={
-            myClubs && myClubs.length > 0
-              ? `${myClubs.length} joined`
+            loaded && discover.length > 0
+              ? `${discover.length} club${discover.length === 1 ? '' : 's'}`
               : undefined
           }
         />
-        <Link
-          to="/community/clubs/new"
-          className="inline-flex items-center gap-1 rounded-full bg-brand-gradient px-3 py-1.5 text-xs font-semibold text-white shadow-glow-orange transition active:scale-[0.97]"
-        >
-          <PlusIcon />
-          New club
-        </Link>
-      </div>
-
-      {!loaded ? (
-        <ClubListSkeleton />
-      ) : myClubs && myClubs.length > 0 ? (
-        <ul className="flex flex-col gap-3">
-          {myClubs.map((c, i) => (
-            <ClubRow key={c.id} club={c} joined index={i} />
-          ))}
-        </ul>
-      ) : null}
-
-      {loaded && (
-        <section>
-          <SectionHeading
-            title="Discover"
-            hint={discover.length > 0 ? `${discover.length} clubs` : undefined}
-          />
-          {discover.length === 0 ? (
-            <EmptyClubs />
-          ) : (
-            <ul className="mt-3 flex flex-col gap-3">
-              {discover.map((c, i) => (
-                <ClubRow key={c.id} club={c} index={i} />
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
+        {!loaded ? (
+          <ClubListSkeleton />
+        ) : discover.length === 0 ? (
+          <EmptyDiscover location={location} />
+        ) : (
+          <ul className="mt-3 flex flex-col gap-3">
+            {discover.map((c, i) => (
+              <ClubRow key={c.id} club={c} index={i} />
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   )
 }
 
-function HostPanel({
-  myClubs,
-  upcoming,
-  hasAnyClub,
+function ManagerPanel({
+  managedClubs,
+  hostedUpcoming,
+  loaded,
 }: {
-  myClubs: Club[]
-  upcoming: ClubEvent[] | null
-  hasAnyClub: boolean
+  managedClubs: Club[]
+  hostedUpcoming: ClubEvent[]
+  loaded: boolean
 }) {
-  const createTarget = hasAnyClub
-    ? `/community/events/new?clubId=${encodeURIComponent(myClubs[0]?.id ?? '')}`
+  const hasManagedClub = managedClubs.length > 0
+  const createTarget = hasManagedClub
+    ? `/community/events/new?clubId=${encodeURIComponent(managedClubs[0].id)}`
     : '/community/clubs/new'
 
   return (
@@ -196,63 +221,70 @@ function HostPanel({
       <section className="relative overflow-hidden rounded-2xl border border-white/5 bg-brand-gradient-soft p-5 shadow-glow-violet">
         <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <h2 className="relative font-display text-xl font-bold tracking-tight">
-          Host a ride
+          {hasManagedClub ? 'Host a ride' : 'Start your own club'}
         </h2>
         <p className="relative mt-1 max-w-sm text-sm text-white/85">
-          {hasAnyClub
-            ? 'Pick a meeting spot, set a time, and your club gets a ride they can RSVP to.'
-            : "Clubs host rides. Start your own club in under a minute — you'll be its first member."}
+          {hasManagedClub
+            ? 'Create a ride, set the meetup spot, and every member of your club can RSVP.'
+            : "Club managers create rides, handle RSVPs, and run their crew's events. Start one in under a minute — you'll be its first member."}
         </p>
         <Link
           to={createTarget}
           className="relative mt-4 inline-flex items-center gap-2 rounded-full bg-black/40 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition active:scale-[0.98]"
         >
           <PlusIcon />
-          {hasAnyClub ? 'Create a ride' : 'Start a club'}
+          {hasManagedClub ? 'Create a ride' : 'Start a club'}
         </Link>
       </section>
 
       <section>
-        <SectionHeading
-          title="My upcoming rides"
-          hint={upcoming && upcoming.length > 0 ? 'From your clubs' : undefined}
-        />
-        {upcoming === null ? (
-          <EventListSkeleton />
-        ) : upcoming.length === 0 ? (
-          <p className="mt-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-4 text-sm text-neutral-400">
-            Nothing on the calendar. Host one — or join a club to see theirs.
-          </p>
-        ) : (
+        <div className="flex items-center justify-between gap-3">
+          <SectionHeading
+            title="My clubs (managed)"
+            hint={hasManagedClub ? `${managedClubs.length}` : undefined}
+          />
+          <Link
+            to="/community/clubs/new"
+            className="inline-flex items-center gap-1 rounded-full bg-brand-gradient px-3 py-1.5 text-xs font-semibold text-white shadow-glow-orange transition active:scale-[0.97]"
+          >
+            <PlusIcon />
+            New club
+          </Link>
+        </div>
+        {!loaded ? (
+          <ClubListSkeleton />
+        ) : hasManagedClub ? (
           <ul className="mt-3 flex flex-col gap-3">
-            {upcoming.map((ev, i) => (
-              <EventRow key={ev.id} event={ev} index={i} />
+            {managedClubs.map((c, i) => (
+              <ManagedClubRow key={c.id} club={c} index={i} />
             ))}
           </ul>
+        ) : (
+          <p className="mt-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-4 text-sm text-neutral-400">
+            You don't manage a club yet. Start one and you'll be able to host
+            rides, post events, and track RSVPs for every member.
+          </p>
         )}
       </section>
 
       <section>
-        <SectionHeading title="Host tools" hint="What you get" />
-        <ul className="mt-3 grid grid-cols-2 gap-3">
-          {[
-            { label: 'Event page', hint: 'Title · time · meet-point' },
-            { label: 'RSVPs', hint: 'Going / maybe / no' },
-            { label: 'Members only', hint: 'Scoped to your club' },
-            { label: 'Edit + cancel', hint: 'You own your events' },
-          ].map((f, i) => (
-            <li
-              key={f.label}
-              className="animate-fade-up rounded-2xl border border-white/5 bg-white/[0.02] p-4"
-              style={{ animationDelay: `${i * 50}ms` }}
-            >
-              <div className="font-display text-sm font-semibold tracking-tight">
-                {f.label}
-              </div>
-              <div className="mt-0.5 text-xs text-neutral-500">{f.hint}</div>
-            </li>
-          ))}
-        </ul>
+        <SectionHeading
+          title="My hosted rides"
+          hint={hostedUpcoming.length > 0 ? 'Upcoming' : undefined}
+        />
+        {!loaded ? (
+          <EventListSkeleton />
+        ) : hostedUpcoming.length === 0 ? (
+          <p className="mt-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-4 text-sm text-neutral-400">
+            No rides on the calendar yet. Create one for your members to RSVP.
+          </p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-3">
+            {hostedUpcoming.map((ev, i) => (
+              <EventRow key={ev.id} event={ev} index={i} />
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   )
@@ -297,14 +329,62 @@ function ClubRow({
                 'Motorcycle club'}
             </p>
           </div>
-          {joined && (
+          {joined ? (
             <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
               Joined
+            </span>
+          ) : (
+            <span className="rounded-full bg-brand-gradient px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-glow-orange">
+              Join
             </span>
           )}
           <ChevronRight />
         </div>
       </Link>
+    </li>
+  )
+}
+
+function ManagedClubRow({ club, index }: { club: Club; index: number }) {
+  return (
+    <li
+      className="animate-fade-up"
+      style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+    >
+      <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-4">
+        <div className="flex items-center gap-3">
+          <Link
+            to={`/community/clubs/${club.id}`}
+            className="flex min-w-0 flex-1 items-center gap-3 group"
+          >
+            <div
+              className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${ACCENT_GRADIENT_CLASS[club.accent]} text-sm font-bold font-display text-white shadow-glow-orange`}
+            >
+              {clubInitials(club.name)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline justify-between gap-2">
+                <h3 className="truncate font-display text-base font-semibold tracking-tight">
+                  {club.name}
+                </h3>
+                <span className="shrink-0 text-xs font-medium text-neutral-400">
+                  {club.memberCount} rider{club.memberCount === 1 ? '' : 's'}
+                </span>
+              </div>
+              <p className="mt-0.5 truncate text-xs text-neutral-500">
+                {club.city ?? 'Motorcycle club'}
+              </p>
+            </div>
+          </Link>
+        </div>
+        <Link
+          to={`/community/events/new?clubId=${encodeURIComponent(club.id)}`}
+          className="mt-3 inline-flex items-center gap-1 rounded-full bg-brand-gradient px-3 py-1.5 text-xs font-semibold text-white shadow-glow-orange transition active:scale-[0.97]"
+        >
+          <PlusIcon />
+          Host a ride
+        </Link>
+      </div>
     </li>
   )
 }
@@ -353,7 +433,7 @@ function SectionHeading({ title, hint }: { title: string; hint?: string }) {
 
 function ClubListSkeleton() {
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className="mt-3 flex flex-col gap-3">
       {[0, 1, 2].map((i) => (
         <li
           key={i}
@@ -377,10 +457,14 @@ function EventListSkeleton() {
   )
 }
 
-function EmptyClubs() {
+function EmptyDiscover({ location }: { location: string | null }) {
   return (
     <div className="mt-3 flex flex-col items-start gap-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-4 text-sm text-neutral-400">
-      <span>No clubs yet. Be the first.</span>
+      <span>
+        {location
+          ? `No clubs matched "${location}" yet. Try a broader area or start the first one.`
+          : 'No clubs yet. Be the first.'}
+      </span>
       <Link
         to="/community/clubs/new"
         className="rounded-full bg-brand-gradient px-3.5 py-1.5 text-xs font-semibold text-white shadow-glow-orange transition active:scale-[0.97]"
