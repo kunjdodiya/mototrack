@@ -1,20 +1,17 @@
-import type { Ride, TrackPoint } from '../../types/ride'
+import type { Ride } from '../../types/ride'
 import type { Trip } from '../../types/trip'
 import {
   centreOf,
   fitZoomForBounds,
   lngLatToWorldPx,
 } from './projection'
-import { formatDistance, formatDuration } from '../stats/format'
-import { haversine } from '../stats/haversine'
+import { formatDistance, formatDuration, formatSpeed } from '../stats/format'
 import { combineTripStats } from '../trips/combineStats'
 
 const CANVAS_W = 1080
 const CANVAS_H = 1920
 const MAP_TOP = 140
-const MAP_BOTTOM = 1240
-const GRAPH_TOP = 1300
-const GRAPH_BOTTOM = 1560
+const MAP_BOTTOM = 1560
 const STATS_Y = 1720
 
 // Matches TripMap / exportTripPng so the same route keeps the same colors
@@ -37,10 +34,9 @@ type ExportOpts = {
 
 /**
  * 1080×1920 transparent PNG overlay for a whole trip: every session's route
- * on one map in per-session colors, a combined speed graph stitched across
- * sessions,
- * and the two headline numbers (total distance + total moving time).
- * Background is fully transparent so it can sit on top of any photo.
+ * on one map in per-session colors, plus three headline numbers (total moving
+ * time, total distance, trip-wide avg speed). Background is fully transparent
+ * so it can sit on top of any photo.
  */
 export async function renderTripOverlayPng(
   opts: ExportOpts,
@@ -66,7 +62,6 @@ export async function renderTripOverlayPng(
   if (!ctx) throw new Error('Canvas 2D unavailable')
 
   drawTripRoute(ctx, usable)
-  drawTripSpeedGraph(ctx, usable)
   drawTripStats(ctx, usable)
 
   return new Promise<Blob>((resolve, reject) => {
@@ -120,117 +115,38 @@ function drawTripRoute(ctx: CanvasRenderingContext2D, rides: Ride[]) {
   ctx.restore()
 }
 
-function drawTripSpeedGraph(ctx: CanvasRenderingContext2D, rides: Ride[]) {
-  // Stitch every session's track end-to-end so the graph reads as one journey.
-  const concatenated: TrackPoint[] = []
-  for (const r of rides) concatenated.push(...r.track)
-
-  const samples = smooth(sampleSpeeds(concatenated))
-  if (samples.length < 2) return
-
-  const padX = 96
-  const graphH = GRAPH_BOTTOM - GRAPH_TOP
-  const innerW = CANVAS_W - padX * 2
-  const maxMps = Math.max(...samples, 1)
-  const maxKmh = Math.ceil((maxMps * 3.6) / 10) * 10 || 10
-
-  const points = samples.map((v, i) => {
-    const x = padX + (i / (samples.length - 1)) * innerW
-    const y =
-      GRAPH_TOP + graphH - ((v * 3.6) / maxKmh) * (graphH - 40) - 20
-    return { x, y }
-  })
-
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)'
-  ctx.lineWidth = 2
-  ctx.setLineDash([6, 10])
-  ctx.beginPath()
-  ctx.moveTo(padX, GRAPH_BOTTOM - 20)
-  ctx.lineTo(CANVAS_W - padX, GRAPH_BOTTOM - 20)
-  ctx.stroke()
-  ctx.setLineDash([])
-
-  ctx.beginPath()
-  ctx.moveTo(points[0].x, GRAPH_BOTTOM - 20)
-  for (const p of points) ctx.lineTo(p.x, p.y)
-  ctx.lineTo(points[points.length - 1].x, GRAPH_BOTTOM - 20)
-  ctx.closePath()
-  ctx.fillStyle = 'rgba(255,77,0,0.22)'
-  ctx.fill()
-
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-  ctx.beginPath()
-  for (let i = 0; i < points.length; i++) {
-    const p = points[i]
-    if (i === 0) ctx.moveTo(p.x, p.y)
-    else ctx.lineTo(p.x, p.y)
-  }
-  ctx.strokeStyle = '#ff4d00'
-  ctx.lineWidth = 5
-  ctx.stroke()
-}
-
 function drawTripStats(ctx: CanvasRenderingContext2D, rides: Ride[]) {
   const combined = combineTripStats(rides)
+  const movingTime = formatDuration(combined.movingDurationMs)
   const distance = formatDistance(combined.distanceMeters)
-  const duration = formatDuration(combined.movingDurationMs)
+  const avgSpeed = formatSpeed(combined.avgSpeedMps)
 
   ctx.textAlign = 'center'
   ctx.textBaseline = 'alphabetic'
 
-  const leftX = CANVAS_W * 0.28
-  const rightX = CANVAS_W * 0.72
+  const columnXs = [CANVAS_W * 0.16, CANVAS_W * 0.5, CANVAS_W * 0.84]
   const valueY = STATS_Y
-  const labelY = STATS_Y + 46
+  const labelY = STATS_Y + 44
 
   ctx.shadowColor = 'rgba(0,0,0,0.55)'
   ctx.shadowBlur = 18
   ctx.shadowOffsetY = 4
 
   ctx.font =
-    '800 104px "Space Grotesk", "Inter", -apple-system, BlinkMacSystemFont, sans-serif'
+    '800 72px "Space Grotesk", "Inter", -apple-system, BlinkMacSystemFont, sans-serif'
   ctx.fillStyle = '#ffffff'
-  ctx.fillText(distance, leftX, valueY)
-  ctx.fillText(duration, rightX, valueY)
+  ctx.fillText(movingTime, columnXs[0], valueY)
+  ctx.fillText(distance, columnXs[1], valueY)
+  ctx.fillText(avgSpeed, columnXs[2], valueY)
 
   ctx.shadowBlur = 0
   ctx.shadowOffsetY = 0
 
-  ctx.font = '700 26px "Inter", -apple-system, sans-serif'
+  ctx.font = '700 24px "Inter", -apple-system, sans-serif'
   ctx.fillStyle = 'rgba(255,255,255,0.85)'
-  ctx.fillText('DISTANCE', leftX, labelY)
-  ctx.fillText('TIME', rightX, labelY)
-}
-
-function sampleSpeeds(track: TrackPoint[]): number[] {
-  if (track.length < 2) return []
-  const out: number[] = [0]
-  for (let i = 1; i < track.length; i++) {
-    const a = track[i - 1]
-    const b = track[i]
-    if (b.speed != null) {
-      out.push(Math.max(0, b.speed))
-      continue
-    }
-    const dt = (b.ts - a.ts) / 1000
-    if (dt <= 0) {
-      out.push(0)
-      continue
-    }
-    out.push(haversine(a.lat, a.lng, b.lat, b.lng) / dt)
-  }
-  return out
-}
-
-function smooth(values: number[]): number[] {
-  return values.map((_, i) => {
-    const win = values.slice(
-      Math.max(0, i - 2),
-      Math.min(values.length, i + 3),
-    )
-    return win.reduce((s, v) => s + v, 0) / win.length
-  })
+  ctx.fillText('MOVING', columnXs[0], labelY)
+  ctx.fillText('DISTANCE', columnXs[1], labelY)
+  ctx.fillText('AVG SPEED', columnXs[2], labelY)
 }
 
 function drawDot(
