@@ -3,6 +3,12 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 
+vi.mock('../features/auth/supabase', () => ({
+  supabase: {
+    storage: { from: () => ({ getPublicUrl: () => ({ data: { publicUrl: '' } }) }) },
+  },
+}))
+
 vi.mock('../features/auth/session', () => ({
   getSession: vi.fn().mockResolvedValue({
     user: {
