@@ -420,9 +420,10 @@ export default function RecordScreen() {
             type="button"
             onClick={() => setShowTrimSheet(true)}
             disabled={saving || startedAt == null}
-            className="mx-auto text-xs font-semibold text-neutral-400 underline decoration-dotted underline-offset-4 transition hover:text-white disabled:opacity-40"
+            className="flex items-center justify-center gap-2 rounded-2xl border border-amber-400/30 bg-amber-500/10 py-4 text-base font-semibold text-amber-100 transition active:scale-[0.98] hover:border-amber-400/50 hover:bg-amber-500/15 disabled:opacity-40"
           >
-            Forgot to stop? Trim ride →
+            <span aria-hidden className="text-lg leading-none">⟲</span>
+            Forgot to stop? Trim ride
           </button>
 
           {error && (
