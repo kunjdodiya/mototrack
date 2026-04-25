@@ -4,6 +4,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../features/storage/db'
 import { addBike, deleteBike } from '../features/storage/bikes'
 import { pushBike, pushDeleteBike } from '../features/storage/sync'
+import {
+  readDefaultBikeId,
+  writeDefaultBikeId,
+} from '../features/storage/preferences'
 import { sumTotals } from '../features/stats/totals'
 import {
   formatDistance,
@@ -32,6 +36,9 @@ export default function ProfileScreen() {
   const [avatarBusy, setAvatarBusy] = useState(false)
   const [avatarError, setAvatarError] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [defaultBikeId, setDefaultBikeId] = useState<string | null>(() =>
+    readDefaultBikeId(),
+  )
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const hasGoogleAvatar = Boolean(profile.avatarUrl)
 
@@ -85,6 +92,16 @@ export default function ProfileScreen() {
       return
     }
     await deleteBike(id)
+    if (defaultBikeId === id) {
+      writeDefaultBikeId(null)
+      setDefaultBikeId(null)
+    }
+  }
+
+  const handleToggleDefaultBike = (id: string) => {
+    const next = defaultBikeId === id ? null : id
+    writeDefaultBikeId(next)
+    setDefaultBikeId(next)
   }
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -251,28 +268,61 @@ export default function ProfileScreen() {
           <ul className="mt-4 flex flex-col gap-2">
             {bikes.map((b, i) => {
               const count = rideCountByBike.get(b.id) ?? 0
+              const isDefault = defaultBikeId === b.id
               return (
                 <li
                   key={b.id}
-                  className="flex animate-fade-up items-center justify-between rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3 transition hover:border-white/10"
+                  className={[
+                    'flex animate-fade-up items-center justify-between rounded-2xl border px-4 py-3 transition',
+                    isDefault
+                      ? 'border-moto-orange/40 bg-gradient-to-br from-moto-orange/10 via-moto-magenta/5 to-transparent'
+                      : 'border-white/5 bg-white/[0.03] hover:border-white/10',
+                  ].join(' ')}
                   style={{ animationDelay: `${i * 40}ms` }}
                 >
-                  <div>
-                    <div className="font-display font-semibold tracking-tight">
-                      {b.name}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate font-display font-semibold tracking-tight">
+                        {b.name}
+                      </span>
+                      {isDefault && (
+                        <span className="rounded-full bg-brand-gradient px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
+                          Default
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-neutral-500">
                       {count === 0 ? 'No rides yet' : `${count} ride${count === 1 ? '' : 's'}`}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => void handleDeleteBike(b.id, b.name)}
-                    className="text-xs font-semibold uppercase tracking-wider text-neutral-500 transition hover:text-red-400"
-                    aria-label={`Remove ${b.name}`}
-                  >
-                    Remove
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleDefaultBike(b.id)}
+                      className={[
+                        'text-xs font-semibold uppercase tracking-wider transition',
+                        isDefault
+                          ? 'text-moto-orange hover:text-white'
+                          : 'text-neutral-500 hover:text-moto-orange',
+                      ].join(' ')}
+                      aria-pressed={isDefault}
+                      aria-label={
+                        isDefault
+                          ? `Unset ${b.name} as default bike`
+                          : `Set ${b.name} as default bike`
+                      }
+                    >
+                      {isDefault ? 'Unset' : 'Set default'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteBike(b.id, b.name)}
+                      className="text-xs font-semibold uppercase tracking-wider text-neutral-500 transition hover:text-red-400"
+                      aria-label={`Remove ${b.name}`}
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </li>
               )
             })}

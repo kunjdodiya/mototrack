@@ -13,6 +13,7 @@ import { platform } from '../features/platform'
 import { db } from '../features/storage/db'
 import { addBike } from '../features/storage/bikes'
 import { pushBike } from '../features/storage/sync'
+import { readDefaultBikeId } from '../features/storage/preferences'
 import type { TrackPoint } from '../types/ride'
 import LiveStats from './LiveStats'
 import RideMap from './RideMap'
@@ -45,10 +46,20 @@ export default function RecordScreen() {
   const firstTime = rideCount === 0
 
   const [rideName, setRideName] = useState('')
-  const [selectedBikeId, setSelectedBikeId] = useState<string>('')
+  const [selectedBikeId, setSelectedBikeId] = useState<string>(
+    () => readDefaultBikeId() ?? '',
+  )
   const [newBike, setNewBike] = useState('')
   const [addingBike, setAddingBike] = useState(false)
   const [showAddBike, setShowAddBike] = useState(false)
+
+  // Hide the picked id if it doesn't match a locally-known bike — covers the
+  // case where the default bike was deleted on another device and pulled away
+  // before this screen rendered. The orphaned id isn't shown to the user.
+  const displayedBikeId =
+    selectedBikeId && bikes.some((b) => b.id === selectedBikeId)
+      ? selectedBikeId
+      : ''
 
   const handleAddBike = async () => {
     const name = newBike.trim()
@@ -104,7 +115,7 @@ export default function RecordScreen() {
     platform.hapticTap('heavy')
     void start({
       name: rideName.trim() || undefined,
-      bikeId: selectedBikeId || undefined,
+      bikeId: displayedBikeId || undefined,
     })
   }
 
@@ -126,7 +137,7 @@ export default function RecordScreen() {
     const ride = await stop()
     if (ride) {
       setRideName('')
-      setSelectedBikeId('')
+      setSelectedBikeId(readDefaultBikeId() ?? '')
       navigate(`/ride/${ride.id}`)
     }
   }
@@ -138,7 +149,7 @@ export default function RecordScreen() {
     setShowTrimSheet(false)
     if (ride) {
       setRideName('')
-      setSelectedBikeId('')
+      setSelectedBikeId(readDefaultBikeId() ?? '')
       navigate(`/ride/${ride.id}`)
     }
   }
@@ -287,7 +298,7 @@ export default function RecordScreen() {
                 </div>
               ) : (
                 <select
-                  value={selectedBikeId}
+                  value={displayedBikeId}
                   onChange={(e) => {
                     const v = e.target.value
                     if (v === '__new__') {

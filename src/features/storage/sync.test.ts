@@ -116,6 +116,7 @@ import {
   pullRemoteBikes,
   pullRemoteTrips,
   pullFromCloud,
+  pushBike,
   pushDeleteBike,
   pushDeleteRide,
   pushDeleteTrip,
@@ -406,5 +407,34 @@ describe('pushDelete', () => {
 
     expect(await pushDeleteTrip('trip-x')).toBe(true)
     expect(tripDeleteSpy).toHaveBeenCalledWith('id', 'trip-x')
+  })
+
+  it('waits for an in-flight push of the same id before deleting', async () => {
+    let resolveUpsert: (value: { error: null }) => void = () => {}
+    const upsertGate = new Promise<{ error: null }>((resolve) => {
+      resolveUpsert = resolve
+    })
+    bikeUpsertSpy.mockImplementationOnce(() => upsertGate)
+
+    const order: string[] = []
+    const pushP = pushBike({
+      id: 'bike-race',
+      name: 'CB350',
+      createdAt: 1,
+      syncedAt: null,
+    }).then(() => order.push('push'))
+
+    const deleteP = pushDeleteBike('bike-race').then(() => {
+      order.push('delete')
+    })
+
+    await Promise.resolve()
+    expect(bikeDeleteSpy).not.toHaveBeenCalled()
+
+    resolveUpsert({ error: null })
+    await Promise.all([pushP, deleteP])
+
+    expect(order).toEqual(['push', 'delete'])
+    expect(bikeDeleteSpy).toHaveBeenCalledWith('id', 'bike-race')
   })
 })

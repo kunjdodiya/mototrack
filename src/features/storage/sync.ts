@@ -9,11 +9,44 @@ import { markBikeSynced } from './bikes'
 import { markTripSynced } from '../trips/trips'
 
 /**
+ * In-flight push tracker keyed by `${table}:${id}`. A delete that arrives
+ * while a push is still on the wire would otherwise race: the delete fires
+ * first, sees no row to remove, returns success, and the late-landing push
+ * inserts the row server-side — the next pull resurrects it locally. By
+ * letting `pushDelete` `await` any pending push for the same id, the cloud
+ * row exists by the time we try to delete it.
+ */
+const pendingPushes = new Map<string, Promise<boolean>>()
+
+function trackPush(key: string, p: Promise<boolean>): Promise<boolean> {
+  pendingPushes.set(key, p)
+  void p.finally(() => {
+    if (pendingPushes.get(key) === p) pendingPushes.delete(key)
+  })
+  return p
+}
+
+async function awaitPendingPush(key: string): Promise<void> {
+  const p = pendingPushes.get(key)
+  if (!p) return
+  try {
+    await p
+  } catch {
+    // The push's own error handling already logged; we just need the
+    // cloud state to settle before we try to delete.
+  }
+}
+
+/**
  * Push a ride row to Supabase. Sets `syncedAt` on success. Swallows errors so
  * a failed cloud push never breaks the local-first flow — the next call to
  * syncUnsyncedRides() will retry.
  */
-export async function pushRide(ride: Ride): Promise<boolean> {
+export function pushRide(ride: Ride): Promise<boolean> {
+  return trackPush(`rides:${ride.id}`, doPushRide(ride))
+}
+
+async function doPushRide(ride: Ride): Promise<boolean> {
   const userId = await getUserId()
   if (!userId) return false
 
@@ -40,7 +73,11 @@ export async function pushRide(ride: Ride): Promise<boolean> {
   return true
 }
 
-export async function pushBike(bike: Bike): Promise<boolean> {
+export function pushBike(bike: Bike): Promise<boolean> {
+  return trackPush(`bikes:${bike.id}`, doPushBike(bike))
+}
+
+async function doPushBike(bike: Bike): Promise<boolean> {
   const userId = await getUserId()
   if (!userId) return false
 
@@ -61,7 +98,11 @@ export async function pushBike(bike: Bike): Promise<boolean> {
   return true
 }
 
-export async function pushTrip(trip: Trip): Promise<boolean> {
+export function pushTrip(trip: Trip): Promise<boolean> {
+  return trackPush(`trips:${trip.id}`, doPushTrip(trip))
+}
+
+async function doPushTrip(trip: Trip): Promise<boolean> {
   const userId = await getUserId()
   if (!userId) return false
 
@@ -98,6 +139,7 @@ async function pushDelete(
 ): Promise<boolean> {
   const userId = await getUserId()
   if (!userId) return false
+  await awaitPendingPush(`${table}:${id}`)
   const { error } = await supabase.from(table).delete().eq('id', id)
   if (error) {
     console.warn(`${table} delete failed:`, error.message)
