@@ -121,6 +121,57 @@ button, a {
   filter: brightness(1.55) contrast(0.82);
 }
 
+/* Branded range slider used by ForgotToStopSheet. Native range inputs render
+ * with platform-default chrome that clashes with the dark sheet — paint a
+ * thin track and a glowing orange thumb so the slider feels native to
+ * MotoTrack. */
+.moto-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 22px;
+  background: transparent;
+  cursor: pointer;
+}
+.moto-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 77, 0, 0.7), rgba(255, 45, 135, 0.6));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.moto-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 77, 0, 0.7), rgba(255, 45, 135, 0.6));
+}
+.moto-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 2px solid #ff4d00;
+  box-shadow: 0 6px 16px -4px rgba(255, 77, 0, 0.7);
+}
+.moto-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 2px solid #ff4d00;
+  box-shadow: 0 6px 16px -4px rgba(255, 77, 0, 0.7);
+}
+.moto-slider:disabled {
+  cursor: not-allowed;
+}
+.moto-slider:disabled::-webkit-slider-runnable-track {
+  background: rgba(255, 255, 255, 0.08);
+}
+.moto-slider:disabled::-moz-range-track {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

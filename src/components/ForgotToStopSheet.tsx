@@ -1,5 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import {
+  CircleMarker,
+  MapContainer,
+  Polyline,
+  TileLayer,
+  useMap,
+} from 'react-leaflet'
+import L from 'leaflet'
+import '../features/map/leafletIcons'
 import type { TrackPoint } from '../types/ride'
 import { haversine } from '../features/stats/haversine'
 import {
@@ -16,10 +25,10 @@ type Props = {
   onConfirm: (endedAt: number) => void | Promise<void>
   onClose: () => void
   /**
-   * The timestamp that "N min/hr ago" is relative to. Defaults to `Date.now()`
-   * for the live-recording path; pass `ride.endedAt` when trimming a finished
-   * ride from its recap screen so presets anchor on when the ride ended, not
-   * when the rider opened the sheet.
+   * The timestamp that the rewind sliders count back from. Defaults to
+   * `Date.now()` for the live-recording path; pass `ride.endedAt` when trimming
+   * a finished ride from its recap screen so the rewind anchors on when the
+   * ride ended, not when the rider opened the sheet.
    */
   endReference?: number
   /** Overrides the header copy — useful for the recap "trim" variant. */
@@ -28,19 +37,6 @@ type Props = {
   description?: string
   confirmLabel?: string
 }
-
-type Preset = { label: string; minutes: number }
-
-const PRESETS: Preset[] = [
-  { label: '15 min ago', minutes: 15 },
-  { label: '30 min ago', minutes: 30 },
-  { label: '1 hr ago', minutes: 60 },
-  { label: '2 hr ago', minutes: 120 },
-  { label: '3 hr ago', minutes: 180 },
-  { label: '4 hr ago', minutes: 240 },
-  { label: '6 hr ago', minutes: 360 },
-  { label: '8 hr ago', minutes: 480 },
-]
 
 function trimmedDistance(points: TrackPoint[], cutoff: number): number {
   let total = 0
@@ -51,6 +47,20 @@ function trimmedDistance(points: TrackPoint[], cutoff: number): number {
     prev = p
   }
   return total
+}
+
+function findCutoffIndex(points: TrackPoint[], cutoff: number): number {
+  if (points.length === 0) return -1
+  if (points[0].ts > cutoff) return -1
+  let lo = 0
+  let hi = points.length - 1
+  if (points[hi].ts <= cutoff) return hi
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1
+    if (points[mid].ts <= cutoff) lo = mid
+    else hi = mid - 1
+  }
+  return lo
 }
 
 export default function ForgotToStopSheet({
@@ -67,24 +77,18 @@ export default function ForgotToStopSheet({
   confirmLabel = 'Save trimmed ride',
 }: Props) {
   const [reference] = useState(() => endReference ?? Date.now())
-  const [minutes, setMinutes] = useState<number>(60)
-  const [customHours, setCustomHours] = useState<string>('')
+  const maxRewindSec = Math.max(
+    0,
+    Math.floor((reference - startedAt) / 1000) - 60,
+  )
+  const [rewindSec, setRewindSec] = useState<number>(0)
   const [submitting, setSubmitting] = useState(false)
 
-  const maxTrimMinutes = Math.max(0, Math.floor((reference - startedAt) / 60000) - 1)
-
-  const effectiveMinutes = useMemo(() => {
-    const h = parseFloat(customHours)
-    if (!Number.isNaN(h) && h > 0) return Math.round(h * 60)
-    return minutes
-  }, [customHours, minutes])
-
-  const clampedMinutes = Math.min(
-    Math.max(0, effectiveMinutes),
-    maxTrimMinutes,
-  )
-  const tooMuch = effectiveMinutes > maxTrimMinutes
-  const cutoff = reference - clampedMinutes * 60000
+  const clampedSec = Math.min(Math.max(0, rewindSec), maxRewindSec)
+  const hours = Math.floor(clampedSec / 3600)
+  const minutes = Math.floor((clampedSec % 3600) / 60)
+  const maxHours = Math.floor(maxRewindSec / 3600)
+  const cutoff = reference - clampedSec * 1000
 
   const previewDistance = useMemo(
     () => trimmedDistance(points, cutoff),
@@ -96,6 +100,21 @@ export default function ForgotToStopSheet({
     liveDistanceMeters - previewDistance,
   )
   const trimmedDurationMs = Math.max(0, liveDurationMs - previewDurationMs)
+
+  const cutoffIndex = useMemo(
+    () => findCutoffIndex(points, cutoff),
+    [points, cutoff],
+  )
+  const cutoffPoint = cutoffIndex >= 0 ? points[cutoffIndex] : null
+
+  const handleHours = (h: number) => {
+    const next = h * 3600 + minutes * 60
+    setRewindSec(Math.min(maxRewindSec, next))
+  }
+  const handleMinutes = (m: number) => {
+    const next = hours * 3600 + m * 60
+    setRewindSec(Math.min(maxRewindSec, next))
+  }
 
   const handleConfirm = async () => {
     if (submitting) return
@@ -117,111 +136,114 @@ export default function ForgotToStopSheet({
       onClick={onClose}
     >
       <div
-        className="mx-auto flex w-full max-w-xl flex-col gap-4 rounded-t-3xl border-t border-white/10 bg-neutral-950 px-5 pb-[max(env(safe-area-inset-bottom),20px)] pt-5 shadow-[0_-20px_60px_-20px_rgba(0,0,0,0.9)]"
+        className="mx-auto flex max-h-[92dvh] w-full max-w-xl flex-col rounded-t-3xl border-t border-white/10 bg-neutral-950 pb-[max(env(safe-area-inset-bottom),20px)] pt-5 shadow-[0_-20px_60px_-20px_rgba(0,0,0,0.9)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto h-1 w-10 rounded-full bg-white/20" />
 
-        <header className="mt-1 flex flex-col gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">
-            {eyebrow}
-          </span>
-          <h2 className="font-display text-xl font-bold tracking-tight">
-            {title}
-          </h2>
-          <p className="text-sm text-neutral-400">{description}</p>
-        </header>
+        <div className="flex flex-col gap-4 overflow-y-auto px-5 pt-4">
+          <header className="flex flex-col gap-1">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">
+              {eyebrow}
+            </span>
+            <h2 className="font-display text-xl font-bold tracking-tight">
+              {title}
+            </h2>
+            <p className="text-sm text-neutral-400">{description}</p>
+          </header>
 
-        <div className="grid grid-cols-4 gap-2">
-          {PRESETS.map((p) => {
-            const disabled = p.minutes > maxTrimMinutes
-            const active = !customHours && minutes === p.minutes && !disabled
-            return (
-              <button
-                key={p.minutes}
-                type="button"
-                disabled={disabled}
-                onClick={() => {
-                  setCustomHours('')
-                  setMinutes(p.minutes)
-                }}
-                className={[
-                  'rounded-xl border px-2 py-2.5 text-xs font-semibold transition',
-                  active
-                    ? 'border-moto-orange/60 bg-brand-gradient text-white shadow-glow-orange'
-                    : 'border-white/10 bg-white/[0.03] text-neutral-300 hover:border-white/20',
-                  disabled ? 'cursor-not-allowed opacity-30 hover:border-white/10' : '',
-                ].join(' ')}
-              >
-                {p.label}
-              </button>
-            )
-          })}
+          {points.length > 1 && (
+            <TrimMap
+              points={points}
+              cutoffPoint={cutoffPoint}
+              cutoffIndex={cutoffIndex}
+            />
+          )}
+
+          <SliderRow
+            label="Scrub the map"
+            value={clampedSec}
+            min={0}
+            max={maxRewindSec}
+            step={10}
+            disabled={maxRewindSec === 0}
+            onChange={setRewindSec}
+            displayValue={
+              clampedSec === 0
+                ? 'Keep full ride'
+                : `−${formatDuration(clampedSec * 1000)}`
+            }
+            hint={
+              cutoffPoint
+                ? `Cutoff at ${formatDateTime(cutoffPoint.ts)}`
+                : 'Slide left to rewind along the route'
+            }
+          />
+
+          <div className="grid grid-cols-2 gap-3">
+            <SliderRow
+              label="Hours back"
+              value={hours}
+              min={0}
+              max={Math.max(0, maxHours)}
+              step={1}
+              disabled={maxHours === 0}
+              onChange={handleHours}
+              displayValue={`${hours} hr`}
+            />
+            <SliderRow
+              label="Minutes back"
+              value={minutes}
+              min={0}
+              max={59}
+              step={1}
+              disabled={maxRewindSec === 0}
+              onChange={handleMinutes}
+              displayValue={`${minutes} min`}
+            />
+          </div>
+
+          <section
+            aria-label="Trimmed ride preview"
+            className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+          >
+            {clampedSec === 0 ? (
+              <p className="text-sm text-neutral-400">
+                Slide the dials above to rewind when this ride ended.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
+                    Ride ends
+                  </span>
+                  <span className="font-display text-sm font-semibold text-white">
+                    {formatDateTime(cutoff)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <PreviewStat
+                    label="Kept"
+                    primary={formatDistance(previewDistance)}
+                    secondary={formatDuration(previewDurationMs)}
+                  />
+                  <PreviewStat
+                    label="Dropped"
+                    primary={formatDistance(trimmedDistanceMeters)}
+                    secondary={formatDuration(trimmedDurationMs)}
+                    muted
+                  />
+                </div>
+              </div>
+            )}
+          </section>
         </div>
 
-        <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
-            Custom
-          </span>
-          <input
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step={0.25}
-            value={customHours}
-            onChange={(e) => setCustomHours(e.target.value)}
-            placeholder="hours"
-            className="w-full bg-transparent text-base font-medium text-white placeholder:text-neutral-600 focus:outline-none"
-          />
-          <span className="text-xs text-neutral-500">hr ago</span>
-        </label>
-
-        <section
-          aria-label="Trimmed ride preview"
-          className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
-        >
-          {tooMuch ? (
-            <p className="text-sm text-amber-300">
-              Your ride is only {formatDuration(reference - startedAt)} long.
-              Pick a smaller value.
-            </p>
-          ) : clampedMinutes === 0 ? (
-            <p className="text-sm text-neutral-400">
-              Pick a time or hours above. Zero rewind keeps this ride
-              unchanged.
-            </p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                  Ride ends
-                </span>
-                <span className="font-display text-sm font-semibold text-white">
-                  {formatDateTime(cutoff)}
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <PreviewStat
-                  label="Kept"
-                  primary={formatDistance(previewDistance)}
-                  secondary={formatDuration(previewDurationMs)}
-                />
-                <PreviewStat
-                  label="Dropped"
-                  primary={formatDistance(trimmedDistanceMeters)}
-                  secondary={formatDuration(trimmedDurationMs)}
-                  muted
-                />
-              </div>
-            </div>
-          )}
-        </section>
-
-        <div className="flex flex-col gap-2">
+        <div className="mt-3 flex flex-col gap-2 px-5">
           <button
             type="button"
             onClick={() => void handleConfirm()}
-            disabled={submitting || tooMuch || clampedMinutes === 0}
+            disabled={submitting || clampedSec === 0}
             className="rounded-2xl bg-brand-gradient py-4 text-base font-semibold text-white shadow-glow-orange transition active:scale-[0.98] disabled:opacity-50"
           >
             {submitting ? 'Saving…' : confirmLabel}
@@ -238,6 +260,150 @@ export default function ForgotToStopSheet({
     </div>,
     document.body,
   )
+}
+
+function SliderRow({
+  label,
+  hint,
+  value,
+  min,
+  max,
+  step,
+  disabled,
+  onChange,
+  displayValue,
+}: {
+  label: string
+  hint?: string
+  value: number
+  min: number
+  max: number
+  step: number
+  disabled?: boolean
+  onChange: (v: number) => void
+  displayValue: string
+}) {
+  return (
+    <label
+      className={[
+        'flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3',
+        disabled ? 'opacity-50' : '',
+      ].join(' ')}
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
+          {label}
+        </span>
+        <span className="font-display text-sm font-semibold tabular-nums text-white">
+          {displayValue}
+        </span>
+      </div>
+      <input
+        type="range"
+        aria-label={label}
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="moto-slider w-full"
+      />
+      {hint && <span className="text-[11px] text-neutral-500">{hint}</span>}
+    </label>
+  )
+}
+
+function TrimMap({
+  points,
+  cutoffPoint,
+  cutoffIndex,
+}: {
+  points: TrackPoint[]
+  cutoffPoint: TrackPoint | null
+  cutoffIndex: number
+}) {
+  const all = useMemo(
+    () => points.map((p) => [p.lat, p.lng] as [number, number]),
+    [points],
+  )
+  const kept = useMemo(() => {
+    if (cutoffIndex < 0) return [] as [number, number][]
+    return points
+      .slice(0, cutoffIndex + 1)
+      .map((p) => [p.lat, p.lng] as [number, number])
+  }, [points, cutoffIndex])
+
+  return (
+    <div className="h-44 overflow-hidden rounded-2xl border border-white/10 bg-neutral-950">
+      <MapContainer
+        center={[points[0].lat, points[0].lng]}
+        zoom={14}
+        scrollWheelZoom={false}
+        zoomControl={false}
+        dragging={false}
+        doubleClickZoom={false}
+        touchZoom={false}
+        keyboard={false}
+        attributionControl={false}
+        className="h-full w-full"
+      >
+        <TileLayer
+          url="https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+          crossOrigin="anonymous"
+          maxZoom={19}
+        />
+        <Polyline
+          positions={all}
+          pathOptions={{
+            color: '#525252',
+            weight: 4,
+            opacity: 0.6,
+            dashArray: '4 6',
+          }}
+        />
+        {kept.length > 1 && (
+          <Polyline
+            positions={kept}
+            pathOptions={{ color: '#ff4d00', weight: 5, opacity: 0.95 }}
+          />
+        )}
+        {cutoffPoint && (
+          <CircleMarker
+            center={[cutoffPoint.lat, cutoffPoint.lng]}
+            radius={8}
+            pathOptions={{
+              stroke: true,
+              color: '#ffffff',
+              weight: 2,
+              fillColor: '#ff4d00',
+              fillOpacity: 1,
+            }}
+          />
+        )}
+        <FitAndSize points={all} />
+      </MapContainer>
+    </div>
+  )
+}
+
+function FitAndSize({ points }: { points: [number, number][] }) {
+  const map = useMap()
+
+  // Fit-bounds once on mount; bounds don't change as the cutoff moves.
+  useEffect(() => {
+    if (points.length > 1) {
+      const bounds = L.latLngBounds(points)
+      map.fitBounds(bounds, { padding: [24, 24] })
+    }
+    // The portal mounts before the sheet has its final size, leaving leaflet
+    // with stale tile dimensions until the user interacts. Force a recompute
+    // on the next paint so tiles fill the panel immediately.
+    const id = window.setTimeout(() => map.invalidateSize(), 0)
+    return () => window.clearTimeout(id)
+  }, [points, map])
+
+  return null
 }
 
 function PreviewStat({

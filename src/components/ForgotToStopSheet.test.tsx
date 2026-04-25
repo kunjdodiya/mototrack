@@ -3,6 +3,24 @@ import { render, fireEvent } from '@testing-library/react'
 import ForgotToStopSheet from './ForgotToStopSheet'
 import type { TrackPoint } from '../types/ride'
 
+vi.mock('react-leaflet', () => ({
+  MapContainer: ({ children }: { children?: React.ReactNode }) => (
+    <div data-testid="trim-map">{children}</div>
+  ),
+  TileLayer: () => null,
+  Polyline: () => null,
+  CircleMarker: () => null,
+  useMap: () => ({
+    fitBounds: vi.fn(),
+    invalidateSize: vi.fn(),
+    panTo: vi.fn(),
+  }),
+}))
+vi.mock('leaflet', () => ({
+  default: { latLngBounds: vi.fn(() => ({})) },
+}))
+vi.mock('../features/map/leafletIcons', () => ({}))
+
 const NOW = 1_700_000_000_000
 
 function point(tsOffset: number, lat = 0, lng = 0): TrackPoint {
@@ -18,8 +36,8 @@ describe('ForgotToStopSheet', () => {
     vi.useRealTimers()
   })
 
-  it('renders presets + custom input + cancel', () => {
-    const { getByText, getByLabelText } = render(
+  it('renders the three rewind sliders + cancel + confirm', () => {
+    const { getByLabelText, getByText } = render(
       <ForgotToStopSheet
         startedAt={NOW - 6 * 3600_000}
         points={[]}
@@ -30,15 +48,17 @@ describe('ForgotToStopSheet', () => {
       />,
     )
     expect(getByLabelText('Stop ride earlier')).toBeDefined()
-    expect(getByText('1 hr ago')).toBeDefined()
-    expect(getByText('4 hr ago')).toBeDefined()
+    expect(getByLabelText('Scrub the map')).toBeDefined()
+    expect(getByLabelText('Hours back')).toBeDefined()
+    expect(getByLabelText('Minutes back')).toBeDefined()
     expect(getByText('Cancel')).toBeDefined()
     expect(getByText('Save trimmed ride')).toBeDefined()
   })
 
-  it('disables presets larger than the ride duration', () => {
-    // Ride is only 1 hr — 2+ hr presets should be disabled.
-    const { getByText } = render(
+  it('caps the hours slider at the ride duration', () => {
+    // Ride is only 1 hr long — minus the 1-min safety floor that's 59 min,
+    // so the hours slider can never advance past 0.
+    const { getByLabelText } = render(
       <ForgotToStopSheet
         startedAt={NOW - 3600_000}
         points={[]}
@@ -48,35 +68,66 @@ describe('ForgotToStopSheet', () => {
         onClose={vi.fn()}
       />,
     )
-    expect((getByText('2 hr ago') as HTMLButtonElement).disabled).toBe(true)
-    expect((getByText('4 hr ago') as HTMLButtonElement).disabled).toBe(true)
-    expect((getByText('30 min ago') as HTMLButtonElement).disabled).toBe(false)
+    const hours = getByLabelText('Hours back') as HTMLInputElement
+    expect(hours.max).toBe('0')
+    expect(hours.disabled).toBe(true)
+    const minutes = getByLabelText('Minutes back') as HTMLInputElement
+    expect(minutes.max).toBe('59')
+    expect(minutes.disabled).toBe(false)
   })
 
-  it('confirm fires onConfirm with the selected cutoff timestamp', () => {
+  it('confirm fires onConfirm with the cutoff derived from the hour+minute sliders', () => {
     const onConfirm = vi.fn()
-    const { getByText } = render(
+    const { getByLabelText, getByText } = render(
       <ForgotToStopSheet
         startedAt={NOW - 5 * 3600_000}
-        points={[point(5 * 3600_000), point(4 * 3600_000), point(3 * 3600_000)]}
+        points={[
+          point(5 * 3600_000),
+          point(4 * 3600_000),
+          point(3 * 3600_000),
+        ]}
         liveDistanceMeters={1000}
         liveDurationMs={5 * 3600_000}
         onConfirm={onConfirm}
         onClose={vi.fn()}
       />,
     )
-    fireEvent.click(getByText('2 hr ago'))
+    fireEvent.change(getByLabelText('Hours back'), { target: { value: '2' } })
+    fireEvent.change(getByLabelText('Minutes back'), {
+      target: { value: '15' },
+    })
     fireEvent.click(getByText('Save trimmed ride'))
     expect(onConfirm).toHaveBeenCalledTimes(1)
-    expect(onConfirm).toHaveBeenCalledWith(NOW - 2 * 3600_000)
+    expect(onConfirm).toHaveBeenCalledWith(
+      NOW - (2 * 3600_000 + 15 * 60_000),
+    )
   })
 
-  it('anchors presets on endReference when provided (recap "trim" mode)', () => {
+  it('the map-scrub slider drives the same cutoff', () => {
     const onConfirm = vi.fn()
-    // Ride ran from 10 hr ago to 3 hr ago, user opens the sheet now.
+    const { getByLabelText, getByText } = render(
+      <ForgotToStopSheet
+        startedAt={NOW - 5 * 3600_000}
+        points={[]}
+        liveDistanceMeters={0}
+        liveDurationMs={5 * 3600_000}
+        onConfirm={onConfirm}
+        onClose={vi.fn()}
+      />,
+    )
+    // Rewind 90 minutes via the scrub slider (5400s).
+    fireEvent.change(getByLabelText('Scrub the map'), {
+      target: { value: '5400' },
+    })
+    fireEvent.click(getByText('Save trimmed ride'))
+    expect(onConfirm).toHaveBeenCalledWith(NOW - 5400 * 1000)
+  })
+
+  it('anchors the cutoff on endReference when provided (recap "trim" mode)', () => {
+    const onConfirm = vi.fn()
     const rideEnd = NOW - 3 * 3600_000
     const rideStart = NOW - 10 * 3600_000
-    const { getByText } = render(
+    const { getByLabelText, getByText } = render(
       <ForgotToStopSheet
         startedAt={rideStart}
         endReference={rideEnd}
@@ -88,9 +139,8 @@ describe('ForgotToStopSheet', () => {
         confirmLabel="Trim ride"
       />,
     )
-    fireEvent.click(getByText('1 hr ago'))
+    fireEvent.change(getByLabelText('Hours back'), { target: { value: '1' } })
     fireEvent.click(getByText('Trim ride'))
-    // 1 hr before the ride's end, not 1 hr before "now".
     expect(onConfirm).toHaveBeenCalledWith(rideEnd - 3600_000)
   })
 
@@ -108,5 +158,23 @@ describe('ForgotToStopSheet', () => {
     )
     fireEvent.click(getByText('Cancel'))
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders the trim map preview when points exist', () => {
+    const { getByTestId } = render(
+      <ForgotToStopSheet
+        startedAt={NOW - 3600_000}
+        points={[
+          point(3600_000, 20.7619, 73.377),
+          point(1800_000, 20.7625, 73.378),
+          point(0, 20.763, 73.379),
+        ]}
+        liveDistanceMeters={1500}
+        liveDurationMs={3600_000}
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    )
+    expect(getByTestId('trim-map')).toBeDefined()
   })
 })
