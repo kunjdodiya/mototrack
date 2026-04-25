@@ -24,6 +24,30 @@ export async function listRides(): Promise<Ride[]> {
 }
 
 /**
+ * Rename a saved ride from the recap. Trims whitespace; an empty result
+ * clears the name so the recap falls back to the formatted start date.
+ * Clears `syncedAt` so the next sync pass re-pushes the renamed row.
+ * Returns the updated ride, or null if the id isn't found.
+ */
+export async function renameRide(
+  id: string,
+  newName: string,
+): Promise<Ride | null> {
+  const existing = await db.rides.get(id)
+  if (!existing) return null
+
+  const trimmed = newName.trim()
+  const updated: Ride = { ...existing, syncedAt: null }
+  if (trimmed) {
+    updated.name = trimmed
+  } else {
+    delete updated.name
+  }
+  await db.rides.put(updated)
+  return updated
+}
+
+/**
  * Retroactively end a saved ride at `newEndedAt`: truncates the track where
  * `ts > newEndedAt`, recomputes stats against the new end, and clears
  * `syncedAt` so the next sync pass re-pushes the trimmed ride upstream. The

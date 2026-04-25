@@ -15,7 +15,7 @@ vi.mock('./db', () => ({
   },
 }))
 
-import { trimRide } from './rides'
+import { renameRide, trimRide } from './rides'
 
 function point(ts: number, lat: number, lng: number): TrackPoint {
   return { ts, lat, lng, speed: 10, alt: null, acc: 5 }
@@ -90,5 +90,33 @@ describe('trimRide', () => {
     const updated = await trimRide(ride.id, ride.startedAt - 1_000_000)
     expect(updated!.endedAt).toBe(ride.startedAt)
     expect(updated!.track).toHaveLength(1)
+  })
+})
+
+describe('renameRide', () => {
+  beforeEach(() => {
+    rideStore.clear()
+  })
+
+  it('returns null when the id is unknown', async () => {
+    const result = await renameRide('missing', 'Sunset loop')
+    expect(result).toBeNull()
+  })
+
+  it('saves a trimmed name and clears syncedAt', async () => {
+    const ride = seedRide()
+    const updated = await renameRide(ride.id, '  Sunset loop  ')
+    expect(updated!.name).toBe('Sunset loop')
+    expect(updated!.syncedAt).toBeNull()
+    expect(rideStore.get(ride.id)!.name).toBe('Sunset loop')
+  })
+
+  it('clears the name when the new name is empty/whitespace', async () => {
+    const ride = seedRide()
+    rideStore.set(ride.id, { ...ride, name: 'Old name' })
+    const updated = await renameRide(ride.id, '   ')
+    expect(updated!.name).toBeUndefined()
+    expect(updated!.syncedAt).toBeNull()
+    expect(rideStore.get(ride.id)!.name).toBeUndefined()
   })
 })

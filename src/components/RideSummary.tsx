@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { Ride } from '../types/ride'
-import { getRide, deleteRide, trimRide } from '../features/storage/rides'
+import { getRide, deleteRide, renameRide, trimRide } from '../features/storage/rides'
 import { pushDeleteRide, pushRide } from '../features/storage/sync'
 import { renderSharePng } from '../features/share/exportPng'
 import { renderOverlayPng } from '../features/share/exportOverlayPng'
@@ -20,6 +20,9 @@ export default function RideSummary() {
   const [exportError, setExportError] = useState<string | null>(null)
   const [picker, setPicker] = useState(false)
   const [trimOpen, setTrimOpen] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState('')
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!id) return
@@ -75,6 +78,34 @@ export default function RideSummary() {
     window.location.href = '/history'
   }
 
+  const startEdit = () => {
+    if (!ride) return
+    setNameDraft(ride.name ?? '')
+    setEditingName(true)
+    requestAnimationFrame(() => nameInputRef.current?.focus())
+  }
+
+  const cancelEdit = () => {
+    setEditingName(false)
+    setNameDraft('')
+  }
+
+  const handleRename = async () => {
+    if (!id || !ride) return
+    const trimmed = nameDraft.trim()
+    if ((ride.name ?? '') === trimmed) {
+      cancelEdit()
+      return
+    }
+    const updated = await renameRide(id, trimmed)
+    setEditingName(false)
+    setNameDraft('')
+    if (updated) {
+      setRide(updated)
+      void pushRide(updated)
+    }
+  }
+
   const handleTrim = async (newEndedAt: number) => {
     if (!id) return
     const updated = await trimRide(id, newEndedAt)
@@ -124,10 +155,75 @@ export default function RideSummary() {
         <span className="text-xs font-semibold uppercase tracking-[0.22em] text-neutral-500">
           Ride Recap
         </span>
-        <h1 className="font-display text-3xl font-bold leading-tight tracking-tight">
-          {title}
-        </h1>
-        {subtitle && (
+        {editingName ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleRename()
+            }}
+            className="flex flex-col gap-2"
+          >
+            <input
+              ref={nameInputRef}
+              type="text"
+              value={nameDraft}
+              onChange={(e) => setNameDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault()
+                  cancelEdit()
+                }
+              }}
+              placeholder={formatDateTime(ride.startedAt)}
+              maxLength={80}
+              aria-label="Ride name"
+              className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 font-display text-2xl font-bold tracking-tight text-white placeholder:text-neutral-600 focus:border-moto-orange/60 focus:bg-white/[0.06] focus:outline-none"
+            />
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="rounded-xl bg-brand-gradient px-4 py-2 text-sm font-semibold text-white shadow-glow-orange transition active:scale-[0.98]"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-neutral-200 transition active:scale-[0.98] hover:bg-white/[0.08]"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="flex items-start gap-2">
+            <h1 className="flex-1 font-display text-3xl font-bold leading-tight tracking-tight">
+              {title}
+            </h1>
+            <button
+              type="button"
+              onClick={startEdit}
+              aria-label="Rename ride"
+              className="mt-1 shrink-0 rounded-full border border-white/10 bg-white/[0.04] p-2 text-neutral-300 transition hover:bg-white/[0.08] hover:text-white"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
+                aria-hidden="true"
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+              </svg>
+            </button>
+          </div>
+        )}
+        {!editingName && subtitle && (
           <p className="text-sm text-neutral-400">{subtitle}</p>
         )}
       </header>
