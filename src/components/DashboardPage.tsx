@@ -24,7 +24,7 @@ export default function DashboardPage() {
   }, [])
 
   return (
-    <div className="min-h-screen">
+    <div className="h-full overflow-y-auto">
       <header className="sticky top-0 z-10 border-b border-white/5 bg-black/60 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-5 py-3">
           <Link to="/dashboard" className="flex items-center gap-2 font-display font-bold tracking-tight">
