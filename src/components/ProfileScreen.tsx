@@ -18,14 +18,6 @@ import {
   uploadAvatar,
   type ProfileInfo,
 } from '../features/storage/profile'
-import {
-  deleteDocument,
-  listDocuments,
-  uploadDocument,
-  type DocumentKind,
-  type LegalDocument,
-} from '../features/storage/documents'
-import DocumentViewer from './DocumentViewer'
 import SignOutButton from './SignOutButton'
 import { checkIsAdmin } from '../features/admin/stats'
 
@@ -313,150 +305,30 @@ export default function ProfileScreen() {
 }
 
 function LegalDocumentsSection() {
-  const [docs, setDocs] = useState<LegalDocument[] | null>(null)
-  const [kind, setKind] = useState<DocumentKind>('license')
-  const [label, setLabel] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [viewing, setViewing] = useState<LegalDocument | null>(null)
-  const [reloadKey, setReloadKey] = useState(0)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    listDocuments().then((next) => {
-      if (!cancelled) setDocs(next)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [reloadKey])
-
-  const refresh = () => setReloadKey((k) => k + 1)
-
-  const pendingLabel = label.trim() || defaultLabelFor(kind)
-
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    setBusy(true)
-    setError(null)
-    try {
-      await uploadDocument(file, kind, pendingLabel)
-      setLabel('')
-      refresh()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Upload failed.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const handleDelete = async (doc: LegalDocument) => {
-    if (!confirm(`Remove "${doc.label}"?`)) return
-    try {
-      await deleteDocument(doc.storagePath)
-      refresh()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Delete failed.')
-    }
-  }
-
   return (
     <section>
-      <SectionHeading title="Legal documents" hint="Licence · Insurance" />
+      <SectionHeading title="Legal documents" hint="Premium" />
       <p className="mt-2 text-sm text-neutral-400">
         Keep your license, insurance, and other ride paperwork in one place.
-        PDF, JPG, or PNG, up to 10 MB.
       </p>
 
-      <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-white/5 bg-white/[0.03] p-3 sm:flex-row">
-        <select
-          value={kind}
-          onChange={(e) => setKind(e.target.value as DocumentKind)}
-          className="rounded-xl border border-white/5 bg-black/30 px-3 py-2 text-sm text-white focus:border-moto-orange/60 focus:outline-none"
-          aria-label="Document type"
-        >
-          <option value="license">Driving licence</option>
-          <option value="insurance">Insurance</option>
-          <option value="other">Other</option>
-        </select>
-        <input
-          type="text"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder={defaultLabelFor(kind)}
-          maxLength={60}
-          className="flex-1 rounded-xl border border-white/5 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-neutral-600 focus:border-moto-orange/60 focus:outline-none"
-          aria-label="Document label"
-        />
+      <div className="mt-3 rounded-2xl border border-moto-orange/25 bg-gradient-to-br from-moto-orange/10 via-moto-magenta/5 to-transparent p-4">
+        <div className="font-display font-semibold tracking-tight text-gradient">
+          Premium feature
+        </div>
+        <p className="mt-1 text-sm text-neutral-300">
+          Document uploads are coming soon and will only be available to
+          premium users. Stay tuned.
+        </p>
         <button
           type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={busy}
-          className="rounded-xl bg-brand-gradient px-4 py-2 text-sm font-semibold text-white shadow-glow-orange transition active:scale-[0.98] disabled:opacity-40"
+          disabled
+          aria-disabled="true"
+          className="mt-3 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-neutral-500"
         >
-          {busy ? 'Uploading…' : 'Upload'}
+          Upload disabled
         </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="application/pdf,image/jpeg,image/png,image/webp,image/heic"
-          className="hidden"
-          onChange={(e) => void handleFile(e)}
-        />
       </div>
-
-      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
-
-      {docs === null ? (
-        <p className="mt-4 text-sm text-neutral-500">Loading…</p>
-      ) : docs.length === 0 ? (
-        <p className="mt-4 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-4 text-sm text-neutral-400">
-          No documents yet. Upload your licence or insurance so they're always
-          within reach.
-        </p>
-      ) : (
-        <ul className="mt-4 flex flex-col gap-2">
-          {docs.map((d, i) => (
-            <li
-              key={d.storagePath}
-              className="flex animate-fade-up items-center justify-between gap-3 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3"
-              style={{ animationDelay: `${i * 40}ms` }}
-            >
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-display font-semibold tracking-tight">
-                  {d.label}
-                </div>
-                <div className="text-xs text-neutral-500">
-                  {kindLabel(d.kind)} · {fileTypeLabel(d.mimeType)}
-                  {d.sizeBytes ? ` · ${formatSize(d.sizeBytes)}` : ''}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewing(d)}
-                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-neutral-200 transition hover:border-white/20"
-              >
-                View
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleDelete(d)}
-                className="text-xs font-semibold uppercase tracking-wider text-neutral-500 transition hover:text-red-400"
-                aria-label={`Remove ${d.label}`}
-              >
-                Remove
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {viewing && (
-        <DocumentViewer doc={viewing} onClose={() => setViewing(null)} />
-      )}
     </section>
   )
 }
@@ -472,30 +344,6 @@ function SectionHeading({ title, hint }: { title: string; hint?: string }) {
       )}
     </div>
   )
-}
-
-function defaultLabelFor(kind: DocumentKind): string {
-  if (kind === 'license') return 'Driving licence'
-  if (kind === 'insurance') return 'Insurance policy'
-  return 'Document'
-}
-
-function kindLabel(kind: DocumentKind): string {
-  if (kind === 'license') return 'Licence'
-  if (kind === 'insurance') return 'Insurance'
-  return 'Other'
-}
-
-function fileTypeLabel(mime: string): string {
-  if (mime === 'application/pdf') return 'PDF'
-  if (mime.startsWith('image/')) return mime.slice('image/'.length).toUpperCase()
-  return mime
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 function StatTile({
