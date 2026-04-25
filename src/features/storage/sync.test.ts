@@ -56,6 +56,12 @@ vi.mock('../auth/session', () => ({
 const rideUpsertSpy = vi.fn().mockResolvedValue({ error: null })
 const bikeUpsertSpy = vi.fn().mockResolvedValue({ error: null })
 const tripUpsertSpy = vi.fn().mockResolvedValue({ error: null })
+const rideDeleteSpy = vi.fn()
+const bikeDeleteSpy = vi.fn()
+const tripDeleteSpy = vi.fn()
+const rideDelete: { error: { message: string } | null } = { error: null }
+const bikeDelete: { error: { message: string } | null } = { error: null }
+const tripDelete: { error: { message: string } | null } = { error: null }
 const rideSelect: {
   rows: unknown[]
   error: { message: string } | null
@@ -87,6 +93,20 @@ vi.mock('../auth/supabase', () => ({
                 : { data: tripSelect.rows, error: tripSelect.error },
           ),
       }),
+      delete: () => ({
+        eq: (...args: unknown[]) => {
+          if (table === 'rides') {
+            rideDeleteSpy(...args)
+            return Promise.resolve({ error: rideDelete.error })
+          }
+          if (table === 'bikes') {
+            bikeDeleteSpy(...args)
+            return Promise.resolve({ error: bikeDelete.error })
+          }
+          tripDeleteSpy(...args)
+          return Promise.resolve({ error: tripDelete.error })
+        },
+      }),
     }),
   },
 }))
@@ -96,6 +116,9 @@ import {
   pullRemoteBikes,
   pullRemoteTrips,
   pullFromCloud,
+  pushDeleteBike,
+  pushDeleteRide,
+  pushDeleteTrip,
   syncWithCloud,
 } from './sync'
 
@@ -117,12 +140,18 @@ beforeEach(() => {
   rideUpsertSpy.mockClear()
   bikeUpsertSpy.mockClear()
   tripUpsertSpy.mockClear()
+  rideDeleteSpy.mockClear()
+  bikeDeleteSpy.mockClear()
+  tripDeleteSpy.mockClear()
   rideSelect.rows = []
   rideSelect.error = null
   bikeSelect.rows = []
   bikeSelect.error = null
   tripSelect.rows = []
   tripSelect.error = null
+  rideDelete.error = null
+  bikeDelete.error = null
+  tripDelete.error = null
 })
 
 describe('pullRemoteRides', () => {
@@ -355,5 +384,27 @@ describe('syncWithCloud', () => {
     expect(rideStore.has('remote-only-ride')).toBe(true)
     expect(bikeStore.has('remote-only-bike')).toBe(true)
     expect(tripStore.has('remote-only-trip')).toBe(true)
+  })
+})
+
+describe('pushDelete', () => {
+  it('returns true when the supabase delete succeeds and pins by id', async () => {
+    const ok = await pushDeleteRide('ride-x')
+    expect(ok).toBe(true)
+    expect(rideDeleteSpy).toHaveBeenCalledWith('id', 'ride-x')
+  })
+
+  it('returns false (and does not throw) when the supabase delete errors', async () => {
+    rideDelete.error = { message: 'permission denied' }
+    const ok = await pushDeleteRide('ride-x')
+    expect(ok).toBe(false)
+  })
+
+  it('exposes the same shape for bikes and trips', async () => {
+    expect(await pushDeleteBike('bike-x')).toBe(true)
+    expect(bikeDeleteSpy).toHaveBeenCalledWith('id', 'bike-x')
+
+    expect(await pushDeleteTrip('trip-x')).toBe(true)
+    expect(tripDeleteSpy).toHaveBeenCalledWith('id', 'trip-x')
   })
 })

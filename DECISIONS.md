@@ -298,3 +298,25 @@ Realtime (Supabase `postgres_changes` subscriptions) was considered and delibera
 - No geo schema change — `clubs.city` stays `text`. A proper radius filter would want `lat`/`lng` + PostGIS, which is a separate decision when the club count demands it.
 
 **Consequences:** Riders land on discovery by default. The location filter survives reloads and lets one user browse `Near Mumbai` while another browses `Near USA`. The manager surface is a single place to host rides, create clubs, and watch the RSVP pipeline, which keeps the IA simple as we add manager-only features later (member roster, ride reminders, recurring events). Trade-offs: substring matching means `city: 'York'` would appear under both `Near New York` and `Near York, PA`; this is acceptable for the current club count. When we want true nearby-by-distance we'll re-enter with a `Platform.getCurrentPosition()` method, `lat`/`lng` columns on `clubs`, and a PostGIS migration, and supersede this entry.
+
+## 2026-04-25 — Cross-user Dexie clear on sign-in + server-first deletes
+
+**Context:** Two related "ghost data" bugs the owner hit in the field, both already filed under the 2026-04-21 sync decision (the "multi-user-on-one-device" caveat) and the 2026-04-22 live-sync decision (which restated the same caveat).
+
+1. Signing out of account A and into account B on the same browser/device left A's rides, bikes, and trips behind in Dexie. RLS scopes the *server* select to `auth.uid()`, so the pull only returns B's rows — but it `bulkPut`s on top of A's leftovers, and `useLiveQuery` in `HistoryList` / `ProfileScreen` / Trips reads the whole local table without filtering by user. Result: B's history showed A's rides until the next page reload (and even then, only the ones the pull happened to overwrite by id).
+2. Deleting a ride from `RideSummary` only removed it from Dexie. The cloud row was untouched, so the next `pullFromCloud()` tick (visibility/focus/resume/90s interval) re-pulled it and the deleted ride reappeared in history. Same shape for `deleteBike` (Profile) and `deleteTrip` (Trip detail).
+
+**Decision:**
+
+- **Cross-user clear.** `AuthGate` now stores the last-signed-in user id in `localStorage` under `mototrack:lastUserId`. On every sign-in effect run, if the stored id is non-empty *and* differs from the new `userId`, run `clearLocalUserData()` (a new helper in `storage/db.ts` that `db.rides.clear() + db.bikes.clear() + db.trips.clear()` in parallel) before `syncWithCloud()`. First-ever sign-in (no prior id) and same-user sign-in (id matches) skip the clear, so a returning offline rider doesn't lose unsynced rides. The pull then repopulates Dexie with only the new user's RLS-scoped rows.
+- **Server-first deletes.** `sync.ts` exports `pushDeleteRide(id)`, `pushDeleteBike(id)`, `pushDeleteTrip(id)` — each does a single `supabase.from(table).delete().eq('id', id)` (RLS pins the delete to `auth.uid()`) and returns a boolean. The three call sites (`RideSummary.handleDelete`, `ProfileScreen.handleDeleteBike`, `TripDetailScreen.handleDeleteTrip`) `await` the cloud delete first; on success they fall through to the local Dexie delete; on failure they show an "check your connection and try again" alert and keep the local row, so the next `pullFromCloud()` doesn't surface a mismatch and the user can retry.
+
+Tombstones / soft-deletes were considered and rejected: they'd add a `deleted_at` column to every table, a tombstone index in Dexie, and a periodic retry pass — all to handle a case (offline delete) that's not on the critical path of any flow. The current trade-off — "delete needs network" — is acceptable for a feature riders use rarely, and the alert clearly tells them why it didn't work.
+
+**Consequences:**
+
+- The two bugs filed in the previous sync decisions are closed.
+- `localStorage` now carries a small piece of cross-session state for the AuthGate. It's cleared implicitly when the browser data is cleared (acceptable — clearing browser data is itself a user-driven sign-out signal).
+- Deleting a ride/bike/trip while offline now fails with a visible alert instead of silently being undone. Riders almost always delete while online (deleting from `RideSummary` happens after a ride lands and the rider is already pulling history); the alert is the right escape hatch for the rare offline case.
+- `rides.trip_id` already has `ON DELETE SET NULL` server-side, so `pushDeleteTrip` cascade-detaches the trip's rides at the cloud in the same statement; no extra cleanup is needed.
+- The pattern (sync helper returning `boolean`, caller gating local mutation on success) is now in place for any future destructive mutation that has to round-trip the server.

@@ -8,6 +8,7 @@ import {
   listRidesForTrip,
   removeRideFromTrip,
 } from '../features/trips/trips'
+import { pushDeleteTrip } from '../features/storage/sync'
 import { combineTripStats } from '../features/trips/combineStats'
 import { TRIP_COVER_CLASS } from '../features/trips/covers'
 import { renderTripSharePng } from '../features/share/exportTripPng'
@@ -84,6 +85,14 @@ export default function TripDetailScreen() {
       )
     )
       return
+    // Server first — `rides.trip_id` has ON DELETE SET NULL, so the cloud
+    // detaches the ride references in the same statement. If we only delete
+    // locally, the next pull resurrects the trip and re-tags the rides.
+    const ok = await pushDeleteTrip(trip.id)
+    if (!ok) {
+      alert("Couldn't delete this trip — check your connection and try again.")
+      return
+    }
     await deleteTrip(trip.id)
     navigate('/trips', { replace: true })
   }

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../features/storage/db'
 import { addBike, deleteBike } from '../features/storage/bikes'
-import { pushBike } from '../features/storage/sync'
+import { pushBike, pushDeleteBike } from '../features/storage/sync'
 import { sumTotals } from '../features/stats/totals'
 import {
   formatDistance,
@@ -79,6 +79,11 @@ export default function ProfileScreen() {
         ? `Remove "${name}"? ${count} ride${count === 1 ? '' : 's'} will keep their history but lose the bike label.`
         : `Remove "${name}"?`
     if (!confirm(msg)) return
+    const ok = await pushDeleteBike(id)
+    if (!ok) {
+      alert("Couldn't remove this bike — check your connection and try again.")
+      return
+    }
     await deleteBike(id)
   }
 

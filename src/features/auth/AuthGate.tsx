@@ -4,6 +4,16 @@ import { getSession, onAuthChange, signOut } from './session'
 import SignInScreen from '../../components/SignInScreen'
 import { syncWithCloud } from '../storage/sync'
 import { startLiveSync } from '../storage/liveSync'
+import { clearLocalUserData } from '../storage/db'
+
+/**
+ * Tracks the last user id that owned the local Dexie state. When a different
+ * Google account signs in on the same device we wipe Dexie before the cloud
+ * pull, so account A's rides/bikes/trips don't bleed into account B's history
+ * and totals (RLS scopes the *server* select but Dexie carries the leftovers
+ * locally).
+ */
+const LAST_USER_KEY = 'mototrack:lastUserId'
 
 type Status = 'loading' | 'signed-in' | 'signed-out'
 
@@ -51,9 +61,26 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!userId) return
-    void syncWithCloud().catch(() => {})
+    let cancelled = false
+    void (async () => {
+      const prev =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(LAST_USER_KEY)
+          : null
+      if (prev && prev !== userId) {
+        await clearLocalUserData()
+      }
+      if (cancelled) return
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(LAST_USER_KEY, userId)
+      }
+      await syncWithCloud().catch(() => {})
+    })()
     const stop = startLiveSync()
-    return stop
+    return () => {
+      cancelled = true
+      stop()
+    }
   }, [userId])
 
   if (status === 'loading') {

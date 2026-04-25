@@ -85,6 +85,32 @@ export async function pushTrip(trip: Trip): Promise<boolean> {
 }
 
 /**
+ * Delete a row from a user-scoped Supabase table. RLS pins the delete to
+ * `auth.uid()`, so a missing or foreign id is a no-op (Postgres returns
+ * success with zero rows affected). Returns `true` only if the round-trip
+ * succeeded — callers gate the *local* delete on this so a row that's still
+ * on the server can't be re-pulled by the next `pullFromCloud()` tick and
+ * resurrect itself in the user's history.
+ */
+async function pushDelete(
+  table: 'rides' | 'bikes' | 'trips',
+  id: string,
+): Promise<boolean> {
+  const userId = await getUserId()
+  if (!userId) return false
+  const { error } = await supabase.from(table).delete().eq('id', id)
+  if (error) {
+    console.warn(`${table} delete failed:`, error.message)
+    return false
+  }
+  return true
+}
+
+export const pushDeleteRide = (id: string) => pushDelete('rides', id)
+export const pushDeleteBike = (id: string) => pushDelete('bikes', id)
+export const pushDeleteTrip = (id: string) => pushDelete('trips', id)
+
+/**
  * Push every ride still marked as unsynced. Called after sign-in so rides
  * recorded on this device get claimed by the signed-in user.
  */

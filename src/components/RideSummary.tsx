@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { Ride } from '../types/ride'
 import { getRide, deleteRide, trimRide } from '../features/storage/rides'
-import { pushRide } from '../features/storage/sync'
+import { pushDeleteRide, pushRide } from '../features/storage/sync'
 import { renderSharePng } from '../features/share/exportPng'
 import { renderOverlayPng } from '../features/share/exportOverlayPng'
 import { renderGlassPng } from '../features/share/exportGlassPng'
@@ -64,6 +64,14 @@ export default function RideSummary() {
   const handleDelete = async () => {
     if (!id) return
     if (!confirm('Delete this ride? This cannot be undone.')) return
+    // Push the delete to Supabase first — if we only delete locally, the
+    // next `pullFromCloud()` tick re-pulls the still-present server row and
+    // the ride reappears in history.
+    const ok = await pushDeleteRide(id)
+    if (!ok) {
+      alert("Couldn't delete this ride — check your connection and try again.")
+      return
+    }
     await deleteRide(id)
     window.location.href = '/history'
   }

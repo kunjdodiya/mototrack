@@ -28,7 +28,12 @@ vi.mock('../storage/liveSync', () => ({
   startLiveSync: vi.fn(() => () => {}),
 }))
 
+vi.mock('../storage/db', () => ({
+  clearLocalUserData: vi.fn().mockResolvedValue(undefined),
+}))
+
 import AuthGate from './AuthGate'
+import { clearLocalUserData } from '../storage/db'
 
 function fakeSession(id: string): Session {
   return {
@@ -51,6 +56,8 @@ describe('AuthGate', () => {
   beforeEach(() => {
     currentSession = null
     onAuthChangeCbs.length = 0
+    window.localStorage.clear()
+    vi.mocked(clearLocalUserData).mockClear()
   })
 
   it('shows the sign-in screen when no session is present', async () => {
@@ -80,5 +87,55 @@ describe('AuthGate', () => {
       expect(screen.getByText('app content')).toBeInTheDocument()
     })
     expect(screen.queryByText(/Continue with Google/i)).not.toBeInTheDocument()
+  })
+
+  it('does not clear local Dexie on the first sign-in (no prior user on this device)', async () => {
+    currentSession = fakeSession('user-1')
+    render(
+      <MemoryRouter>
+        <AuthGate>
+          <div>app content</div>
+        </AuthGate>
+      </MemoryRouter>,
+    )
+    await waitFor(() => {
+      expect(screen.getByText('app content')).toBeInTheDocument()
+    })
+    expect(clearLocalUserData).not.toHaveBeenCalled()
+    expect(window.localStorage.getItem('mototrack:lastUserId')).toBe('user-1')
+  })
+
+  it('clears local Dexie when a different user signs in on the same device', async () => {
+    window.localStorage.setItem('mototrack:lastUserId', 'user-1')
+    currentSession = fakeSession('user-2')
+    render(
+      <MemoryRouter>
+        <AuthGate>
+          <div>app content</div>
+        </AuthGate>
+      </MemoryRouter>,
+    )
+    await waitFor(() => {
+      expect(clearLocalUserData).toHaveBeenCalledTimes(1)
+    })
+    await waitFor(() => {
+      expect(window.localStorage.getItem('mototrack:lastUserId')).toBe('user-2')
+    })
+  })
+
+  it('does not clear local Dexie when the same user signs in again', async () => {
+    window.localStorage.setItem('mototrack:lastUserId', 'user-1')
+    currentSession = fakeSession('user-1')
+    render(
+      <MemoryRouter>
+        <AuthGate>
+          <div>app content</div>
+        </AuthGate>
+      </MemoryRouter>,
+    )
+    await waitFor(() => {
+      expect(screen.getByText('app content')).toBeInTheDocument()
+    })
+    expect(clearLocalUserData).not.toHaveBeenCalled()
   })
 })

@@ -47,3 +47,14 @@ class MotoDB extends Dexie {
 }
 
 export const db = new MotoDB()
+
+/**
+ * Drop every user-scoped row from local Dexie. Used by `AuthGate` when a
+ * different Google account signs in on the same device — leaving the previous
+ * user's rides/bikes/trips behind would let `useLiveQuery` (which doesn't
+ * filter by user) leak them into the new user's history and profile totals
+ * until the next pull races them out. Schema/version are untouched.
+ */
+export async function clearLocalUserData(): Promise<void> {
+  await Promise.all([db.rides.clear(), db.bikes.clear(), db.trips.clear()])
+}
